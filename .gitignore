@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+frontend/node_modules/
+
+# next.js
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+
+# go
+backend/bin/
+backend/tmp/
+
+# env
+.env
+.env.local
+*.local
+
+# build / cache
+dist/
+*.log
+.DS_Store
+
+# editor
+.vscode/
+.idea/
+frontend/tsconfig.tsbuildinfo

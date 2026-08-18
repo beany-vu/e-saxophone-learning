@@ -1,0 +1,71 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yds}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yds_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-yds120}
+    ports:
+      - "5544:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yds} -d ${POSTGRES_DB:-yds120}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-yds}:${POSTGRES_PASSWORD:-yds_dev_pw}@db:5432/${POSTGRES_DB:-yds120}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      PORT: "8080"
+      # Origin allowed to call the API directly with credentials (dev browser).
+      CORS_ORIGIN: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  web:
+    build: ./frontend
+    environment:
+      # Server-side: Next rewrites /api/* to the Go service over the compose network.
+      API_INTERNAL_URL: http://api:8080
+      NODE_ENV: development
+      # WSL bind mounts do not deliver inotify events, so webpack has to poll.
+      WATCHPACK_POLLING: "true"
+    volumes:
+      # Live mount: edit files on the host, the dev server recompiles.
+      - ./frontend:/app
+      # Anonymous volumes keep the image's node_modules and build cache from
+      # being hidden by the bind mount above.
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+  # Test runner. Not started by `up` (it sits behind the "test" profile).
+  #   docker compose run --rm api-test
+  api-test:
+    image: golang:1.23-alpine
+    working_dir: /src
+    volumes:
+      - ./backend:/src
+      - go_mod_cache:/go/pkg/mod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-yds}:${POSTGRES_PASSWORD:-yds_dev_pw}@db:5432/${POSTGRES_DB:-yds120}?sslmode=disable
+      JWT_SECRET: test-secret
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["test"]
+    command: ["go", "test", "./...", "-count=1"]
+
+volumes:
+  db_data:
+  go_mod_cache:
