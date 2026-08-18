@@ -9,6 +9,7 @@ Two ways in, switchable on the monitor page:
 - **Microphone**, the no-cable one. The computer listens to the instrument's
   speaker and works out the pitch from the sound
 
+- **English and French**, switchable in the header, remembered between visits
 - **Monitor** live keyboard, breath and velocity meters, raw event log
 - **Learn** fingering chart in both directions, warm-ups, songs, your own melodies
 - **Exercises** scale trainer that highlights the next note and scores accuracy
@@ -219,6 +220,10 @@ frontend/               Next.js 15, App Router, TypeScript
   lib/tone.ts           melody timing, tested without any audio
   lib/staff.ts          where a note sits on the treble staff
   lib/course.ts         the dated 20 week plan
+  lib/i18n.ts           every interface string, in English and French
+  lib/i18n-context.tsx  the language switch, remembered in the browser
+  lib/curriculum-i18n.ts French for the exercises and songs
+  lib/course-i18n.ts    French for the course
   hooks/useMelodyPlayer.ts  plays a melody through the speakers
   lib/api.ts            typed fetch wrapper for the API
   lib/auth-context.tsx  who is logged in

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 import { InputProvider } from '@/lib/input-context'
+import { I18nProvider } from '@/lib/i18n-context'
 import Nav from '@/components/Nav'
 
 export const metadata: Metadata = {
@@ -18,12 +19,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // are still reported.
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <AuthProvider>
-          <InputProvider>
-            <Nav />
-            <div className="container">{children}</div>
-          </InputProvider>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <InputProvider>
+              <Nav />
+              <div className="container">{children}</div>
+            </InputProvider>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   )

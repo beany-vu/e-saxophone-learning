@@ -6,9 +6,12 @@ import { api, ApiError, type Summary } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { formatDuration, noteName, PIANO_HIGH, PIANO_LOW } from '@/lib/notes'
 import { itemById } from '@/lib/curriculum'
+import { useI18n } from '@/lib/i18n-context'
+import { localiseItem } from '@/lib/curriculum-i18n'
 
 export default function ProgressPage() {
   const { user, loading: authLoading } = useAuth()
+  const { lang, t } = useI18n()
   const [summary, setSummary] = useState<Summary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,15 +29,15 @@ export default function ProgressPage() {
       .finally(() => setLoading(false))
   }, [user, authLoading])
 
-  if (authLoading || loading) return <p className="muted">Loading...</p>
+  if (authLoading || loading) return <p className="muted">{t('progress.loading')}</p>
 
   if (!user) {
     return (
       <div className="panel" style={{ maxWidth: 420 }}>
-        <h2>Log in to see your progress</h2>
-        <p className="muted">Practice history is stored per account.</p>
+        <h2>{t('progress.logInPrompt')}</h2>
+        <p className="muted">{t('progress.perAccount')}</p>
         <Link href="/login">
-          <button>Go to login</button>
+          <button>{t('progress.goToLogin')}</button>
         </Link>
       </div>
     )
@@ -53,30 +56,30 @@ export default function ProgressPage() {
 
   return (
     <>
-      <h1>Progress</h1>
-      <p className="muted">Everything you have recorded, across every session.</p>
+      <h1>{t('progress.title')}</h1>
+      <p className="muted">{t('progress.intro')}</p>
 
       <div className="stat-grid">
         <div className="stat">
           <div className="value">{summary.totalSessions}</div>
-          <div className="label">Sessions</div>
+          <div className="label">{t('progress.sessions')}</div>
         </div>
         <div className="stat">
           <div className="value">{summary.totalNotes}</div>
-          <div className="label">Notes played</div>
+          <div className="label">{t('progress.notesPlayed')}</div>
         </div>
         <div className="stat">
           <div className="value">{formatDuration(summary.totalSeconds)}</div>
-          <div className="label">Time practised</div>
+          <div className="label">{t('progress.timePractised')}</div>
         </div>
         <div className="stat">
           <div className="value">{neverPlayed}</div>
-          <div className="label">Notes never played</div>
+          <div className="label">{t('progress.notesNeverPlayed')}</div>
         </div>
       </div>
 
       <div className="panel" style={{ marginTop: 18 }}>
-        <h2>Note coverage</h2>
+        <h2>{t('progress.noteCoverage')}</h2>
         <p className="muted">
           Brighter means you play it more. The dark ones are the notes you are avoiding.
         </p>
@@ -102,28 +105,32 @@ export default function ProgressPage() {
       </div>
 
       <div className="panel">
-        <h2>Warm-ups and songs</h2>
+        <h2>{t('progress.warmupsAndSongs')}</h2>
         {(summary.itemStats || []).length === 0 ? (
           <p className="muted" style={{ margin: 0 }}>
-            Nothing tracked yet. Pick something in <Link href="/learn">Learn</Link> and save an
-            attempt.
+            {t('progress.nothingTracked')}
           </p>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>What</th>
-                <th>Kind</th>
-                <th>Attempts</th>
-                <th>Best accuracy</th>
-                <th>Time spent</th>
-                <th>Last played</th>
+                <th>{t('progress.what')}</th>
+                <th>{t('progress.kind')}</th>
+                <th>{t('progress.attempts')}</th>
+                <th>{t('progress.bestAccuracy')}</th>
+                <th>{t('progress.timeSpent')}</th>
+                <th>{t('progress.lastPlayed')}</th>
               </tr>
             </thead>
             <tbody>
               {summary.itemStats.map((st) => (
                 <tr key={st.item}>
-                  <td>{itemById(st.item)?.title || st.item}</td>
+                  <td>
+                    {(() => {
+                      const item = itemById(st.item)
+                      return item ? localiseItem(item, lang).title : st.item
+                    })()}
+                  </td>
                   <td>{st.source}</td>
                   <td>{st.timesPlayed}</td>
                   <td
@@ -148,20 +155,19 @@ export default function ProgressPage() {
       </div>
 
       <div className="panel">
-        <h2>Recent sessions</h2>
+        <h2>{t('progress.recentSessions')}</h2>
         {summary.recentSessions.length === 0 ? (
           <p className="muted" style={{ margin: 0 }}>
-            Nothing saved yet. Play something in the <Link href="/monitor">Monitor</Link> or
-            <Link href="/learn"> Learn</Link>.
+            {t('progress.nothingSaved')}
           </p>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>When</th>
-                <th>Source</th>
-                <th>Duration</th>
-                <th>Notes</th>
+                <th>{t('progress.when')}</th>
+                <th>{t('progress.source')}</th>
+                <th>{t('progress.duration')}</th>
+                <th>{t('progress.notes')}</th>
               </tr>
             </thead>
             <tbody>

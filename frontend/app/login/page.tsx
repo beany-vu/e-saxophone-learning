@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import { useI18n } from '@/lib/i18n-context'
 
 export default function LoginPage() {
   const { user, login, signup, logout } = useAuth()
   const router = useRouter()
   const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -32,12 +34,12 @@ export default function LoginPage() {
   if (user) {
     return (
       <div className="panel" style={{ maxWidth: 420 }}>
-        <h2>Signed in</h2>
+        <h2>{t('login.signedIn')}</h2>
         <p className="muted">
-          You are logged in as {user.displayName} ({user.email}).
+          {t('login.loggedInAs', { name: user.displayName, email: user.email })}
         </p>
         <button className="ghost" onClick={() => logout()}>
-          Log out
+          {t('nav.logout')}
         </button>
       </div>
     )
@@ -45,18 +47,18 @@ export default function LoginPage() {
 
   return (
     <div style={{ maxWidth: 420 }}>
-      <h1>{mode === 'login' ? 'Log in' : 'Create an account'}</h1>
-      <p className="muted">Your practice history is stored against your account.</p>
+      <h1>{mode === 'login' ? t('login.logIn') : t('login.createAccount')}</h1>
+      <p className="muted">{t('login.historyNote')}</p>
 
       <form className="panel" onSubmit={submit}>
         {mode === 'signup' && (
           <div className="field">
-            <label htmlFor="name">Display name (optional)</label>
+            <label htmlFor="name">{t('login.displayName')}</label>
             <input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </div>
         )}
         <div className="field">
-          <label htmlFor="email">Email</label>
+          <label htmlFor="email">{t('login.email')}</label>
           <input
             id="email"
             type="email"
@@ -66,7 +68,9 @@ export default function LoginPage() {
           />
         </div>
         <div className="field">
-          <label htmlFor="pw">Password {mode === 'signup' && '(at least 8 characters)'}</label>
+          <label htmlFor="pw">
+            {t('login.password')} {mode === 'signup' && t('login.passwordHint')}
+          </label>
           <input
             id="pw"
             type="password"
@@ -78,7 +82,7 @@ export default function LoginPage() {
 
         <div className="row">
           <button type="submit" disabled={busy}>
-            {busy ? 'Working...' : mode === 'login' ? 'Log in' : 'Sign up'}
+            {busy ? t('login.working') : mode === 'login' ? t('login.logIn') : t('login.signUp')}
           </button>
           <button
             type="button"
@@ -88,7 +92,7 @@ export default function LoginPage() {
               setError(null)
             }}
           >
-            {mode === 'login' ? 'Need an account?' : 'Already have one?'}
+            {mode === 'login' ? t('login.needAccountShort') : t('login.haveOneShort')}
           </button>
         </div>
         {error && <p className="error">{error}</p>}

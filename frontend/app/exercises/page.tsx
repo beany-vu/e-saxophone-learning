@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Piano from '@/components/Piano'
 import { useInputContext } from '@/lib/input-context'
+import { useI18n } from '@/lib/i18n-context'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import { buildScale, formatDuration, noteName, NOTE_NAMES, SCALES } from '@/lib/notes'
 
 export default function ExercisesPage() {
   const input = useInputContext()
+  const { t } = useI18n()
   const { user } = useAuth()
 
   const [rootPc, setRootPc] = useState(0) // pitch class, 0 = C
@@ -94,16 +96,15 @@ export default function ExercisesPage() {
 
   return (
     <>
-      <h1>Scale trainer</h1>
+      <h1>{t('exercises.title')}</h1>
       <p className="muted">
-        Pick a scale, hit start, and play it. The highlighted key is the note you should play next.
-        An octave slip still counts, since it compares note names.
+{t('exercises.intro')}
       </p>
 
       <div className="panel">
         <div className="row">
           <div style={{ minWidth: 110 }}>
-            <label htmlFor="root">Root</label>
+            <label htmlFor="root">{t('exercises.root')}</label>
             <select id="root" value={rootPc} onChange={(e) => setRootPc(Number(e.target.value))}>
               {NOTE_NAMES.map((n, i) => (
                 <option key={n} value={i}>
@@ -113,7 +114,7 @@ export default function ExercisesPage() {
             </select>
           </div>
           <div style={{ minWidth: 110 }}>
-            <label htmlFor="oct">Octave</label>
+            <label htmlFor="oct">{t('exercises.octave')}</label>
             <select id="oct" value={octave} onChange={(e) => setOctave(Number(e.target.value))}>
               {[4, 5, 6].map((o) => (
                 <option key={o} value={o}>
@@ -123,7 +124,7 @@ export default function ExercisesPage() {
             </select>
           </div>
           <div style={{ minWidth: 190 }}>
-            <label htmlFor="scale">Scale</label>
+            <label htmlFor="scale">{t('exercises.scale')}</label>
             <select id="scale" value={scaleName} onChange={(e) => setScaleName(e.target.value)}>
               {Object.keys(SCALES).map((s) => (
                 <option key={s} value={s}>
@@ -135,43 +136,40 @@ export default function ExercisesPage() {
           <div>
             {input.status !== 'ready' ? (
               <button onClick={input.connect}>
-                {input.mode === 'mic' ? 'Start listening' : 'Connect MIDI'}
+                {input.mode === 'mic' ? t('learn.startListening') : t('learn.connectMidi')}
               </button>
             ) : (
               <button onClick={start} disabled={running}>
-                {running ? 'Playing...' : 'Start'}
+                {running ? t('common.playing') : t('common.start')}
               </button>
             )}
           </div>
         </div>
         <div className="row" style={{ marginTop: 10, alignItems: 'center' }}>
           <span className="label" style={{ margin: 0 }}>
-            Input
+            {t('exercises.input')}
           </span>
           <button
             className={input.mode === 'midi' ? '' : 'ghost'}
             onClick={() => input.setMode('midi')}
             aria-pressed={input.mode === 'midi'}
           >
-            USB MIDI
+            {t('monitor.usbMidi')}
           </button>
           <button
             className={input.mode === 'mic' ? '' : 'ghost'}
             onClick={() => input.setMode('mic')}
             aria-pressed={input.mode === 'mic'}
           >
-            Microphone
+            {t('monitor.microphone')}
           </button>
           <span className="muted" style={{ fontSize: 13 }}>
-            Microphone mode needs no cable. Set it up on the{' '}
-            <Link href="/monitor">monitor page</Link>.
+            {t('exercises.micHint')}
           </span>
         </div>
         {input.status === 'unsupported' && (
           <p className="error">
-            {input.mode === 'mic'
-              ? 'This browser will not give a page microphone access.'
-              : 'This browser has no Web MIDI support. Use Chrome or Edge.'}
+            {input.mode === 'mic' ? t('monitor.noMicSupport') : t('monitor.noWebMidi')}
           </p>
         )}
       </div>
@@ -197,47 +195,47 @@ export default function ExercisesPage() {
       </div>
 
       <div className="panel">
-        <h2>Score</h2>
+        <h2>{t('exercises.score')}</h2>
         <div className="stat-grid">
           <div className="stat">
             <div className="value">
               {index}
               <span style={{ fontSize: 16, color: 'var(--muted)' }}>/{sequence.length}</span>
             </div>
-            <div className="label">Progress</div>
+            <div className="label">{t('learn.progress')}</div>
           </div>
           <div className="stat">
             <div className="value">{accuracy}%</div>
-            <div className="label">Accuracy</div>
+            <div className="label">{t('learn.accuracy')}</div>
           </div>
           <div className="stat">
             <div className="value">{wrong}</div>
-            <div className="label">Wrong notes</div>
+            <div className="label">{t('learn.wrongNotes')}</div>
           </div>
           <div className="stat">
             <div className="value">{formatDuration(elapsed)}</div>
-            <div className="label">Time</div>
+            <div className="label">{t('learn.time')}</div>
           </div>
         </div>
 
         {done && (
           <p style={{ color: 'var(--good)', marginTop: 12 }}>
-            Scale complete. {correct} correct, {wrong} wrong, {accuracy}% accuracy.
+            {t('exercises.complete', { correct, wrong, accuracy })}
           </p>
         )}
 
         <div className="row" style={{ marginTop: 14 }}>
           {user ? (
             <button onClick={save} disabled={input.totalNotes === 0}>
-              Save session
+              {t('monitor.saveSession')}
             </button>
           ) : (
             <span className="muted" style={{ fontSize: 13 }}>
-              Log in to save this to your progress.
+              {t('exercises.logInToSave')}
             </span>
           )}
           <button className="ghost" onClick={start} disabled={input.status !== 'ready'}>
-            Restart
+            {t('common.restart')}
           </button>
         </div>
         {saveMsg && <p className="muted" style={{ marginTop: 8 }}>{saveMsg}</p>}

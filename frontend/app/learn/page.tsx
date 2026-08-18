@@ -31,6 +31,10 @@ import {
 } from '@/lib/fingerings'
 import { formatDuration, noteName, toConcert, yamahaName } from '@/lib/notes'
 import { describeOffset } from '@/lib/calibration'
+import { useI18n } from '@/lib/i18n-context'
+import type { Lang, StringKey } from '@/lib/i18n'
+import { localiseItem } from '@/lib/curriculum-i18n'
+import { localiseWeek, localisePhase } from '@/lib/course-i18n'
 import { COURSE, PHASES, weekDates, weekFor, weekStatus } from '@/lib/course'
 
 const CUSTOM_STORAGE_KEY = 'yds120.customMelodies'
@@ -40,6 +44,7 @@ type CustomMelody = { id: string; title: string; notes: number[]; phrases?: Phra
 
 export default function LearnPage() {
   const input = useInputContext()
+  const { lang, t } = useI18n()
   const player = useMelodyPlayer()
   const { user } = useAuth()
   const [tempo, setTempo] = useState(90)
@@ -65,8 +70,9 @@ export default function LearnPage() {
     localStorage.setItem(WEEK_STORAGE_KEY, String(clamped))
   }, [])
 
-  const week = COURSE.find((w) => w.week === workingWeek) ?? COURSE[0]
-  const phase = PHASES.find((p) => p.weeks.includes(week.week))
+  const week = localiseWeek(COURSE.find((w) => w.week === workingWeek) ?? COURSE[0], lang)
+  const rawPhase = PHASES.find((p) => p.weeks.includes(week.week))
+  const phase = rawPhase ? localisePhase(rawPhase, lang) : undefined
   const status = calendarWeek === null ? null : weekStatus(week.week, calendarWeek)
 
   // ---- Fingering explorer -------------------------------------------------
@@ -132,13 +138,17 @@ export default function LearnPage() {
   }, [draftNotes, draftTranspose, draftFit, draftNumbers, draftTonic])
 
   function addCustom() {
-    if (!draftTitle.trim()) return setDraftError('Give it a name first.')
+    if (!draftTitle.trim()) return setDraftError(t('learn.nameFirst'))
     if (draftParsed.errors.length) {
       return setDraftError(
-        `Could not read: ${draftParsed.errors.join(', ')}. Use note names like C5, F#5, Bb4. After conversion they must land between ${noteName(FINGERING_LOW)} and ${noteName(FINGERING_HIGH)}.`,
+        t('learn.couldNotRead', {
+          tokens: draftParsed.errors.join(', '),
+          low: noteName(FINGERING_LOW),
+          high: noteName(FINGERING_HIGH),
+        }),
       )
     }
-    if (draftParsed.notes.length < 2) return setDraftError('That is not enough notes to practise.')
+    if (draftParsed.notes.length < 2) return setDraftError(t('learn.notEnoughNotes'))
     saveCustoms([
       ...customs,
       {
@@ -158,17 +168,19 @@ export default function LearnPage() {
     title: c.title,
     kind: 'song',
     level: 2,
-    about: 'Your own melody.',
+    about: t('learn.yourMelodies'),
     notes: c.notes,
-    phrases: c.phrases?.length ? c.phrases : [{ label: 'All of it', start: 0, end: c.notes.length }],
+    phrases: c.phrases?.length
+      ? c.phrases
+      : [{ label: t('learn.allOfIt'), start: 0, end: c.notes.length }],
   }))
 
   // ---- Practice runner ----------------------------------------------------
   const [activeId, setActiveId] = useState<string | null>(null)
-  const active = useMemo(
-    () => [...ALL_ITEMS, ...customItems].find((i) => i.id === activeId) || null,
-    [activeId, customItems],
-  )
+  const active = useMemo(() => {
+    const found = [...ALL_ITEMS, ...customItems].find((i) => i.id === activeId)
+    return found ? localiseItem(found, lang) : null
+  }, [activeId, customItems, lang])
   const [phraseIndex, setPhraseIndex] = useState<number | null>(null)
   const segment = useMemo(
     () => (active ? phraseNotes(active, phraseIndex) : null),
@@ -197,6 +209,10 @@ export default function LearnPage() {
 
   const playingRef = useRef(false)
   playingRef.current = player.playing
+  // The note callback must not be rebuilt when the language changes, or it
+  // would resubscribe mid-run, so it reads the translator through a ref.
+  const tRef = useRef(t)
+  tRef.current = t
 
   const handleNote = useCallback((note: number) => {
     // The demo plays through the speakers, and in microphone mode the app is
@@ -226,8 +242,11 @@ export default function LearnPage() {
     setWrong((w) => w + 1)
     setHint(
       note % 12 === target % 12
-        ? `Right note, wrong octave: that was ${noteName(note)}, the line wants ${noteName(target)}.`
-        : `That was ${noteName(note)}, the line wants ${noteName(target)}.`,
+        ? tRef.current('learn.rightNoteWrongOctave', {
+            played: noteName(note),
+            target: noteName(target),
+          })
+        : tRef.current('learn.wrongNote', { played: noteName(note), target: noteName(target) }),
     )
   }, [])
 
@@ -280,7 +299,7 @@ export default function LearnPage() {
         wrongNotes: wrong,
         noteCounts: counts,
       })
-      setSaveMsg('Saved to your progress.')
+      setSaveMsg(t('learn.savedToProgress'))
       loadStats()
     } catch (err) {
       setSaveMsg(err instanceof Error ? err.message : 'save failed')
@@ -311,25 +330,21 @@ export default function LearnPage() {
 
   return (
     <>
-      <h1>Learn</h1>
-      <p className="muted">
-        Which keys make which note, and material to practise with. Everything here is written
-        pitch, the note you finger, which is what the fingering chart in the manual shows.
-      </p>
+      <h1>{t('learn.title')}</h1>
+      <p className="muted">{t('learn.intro')}</p>
 
       {input.status !== 'ready' && (
         <div className="panel">
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <p className="muted" style={{ margin: 0 }}>
-              <strong>Nothing is connected yet.</strong> The fingering chart works without the
-              instrument, but the trainer cannot hear you until an input is running.
+              {t('learn.notConnected')}
             </p>
             <div className="row">
               <button onClick={input.connect}>
-                {input.mode === 'mic' ? 'Start listening' : 'Connect MIDI'}
+                {input.mode === 'mic' ? t('learn.startListening') : t('learn.connectMidi')}
               </button>
               <Link href="/monitor">
-                <button className="ghost">Input settings</button>
+                <button className="ghost">{t('learn.inputSettings')}</button>
               </Link>
             </div>
           </div>
@@ -341,7 +356,7 @@ export default function LearnPage() {
       <div className="panel" style={{ borderColor: 'var(--accent)' }}>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
             <h2 style={{ marginBottom: 0 }}>
-              Week {week.week} of {COURSE.length}: {week.title}
+              {t('course.weekOf', { week: week.week, total: COURSE.length })}: {week.title}
             </h2>
             <span className="muted" style={{ fontSize: 13 }}>
               {weekDates(week.week).start} to {weekDates(week.week).end}
@@ -355,14 +370,14 @@ export default function LearnPage() {
               onClick={() => goToWeek(week.week - 1)}
               disabled={week.week === 1}
             >
-              Previous
+              {t('common.previous')}
             </button>
             <button
               className="ghost"
               onClick={() => goToWeek(week.week + 1)}
               disabled={week.week === COURSE.length}
             >
-              Next week
+              {t('common.next')}
             </button>
             {calendarWeek !== null && (
               <>
@@ -370,39 +385,44 @@ export default function LearnPage() {
                   className="badge"
                   style={{ color: status === 'on track' ? 'var(--good)' : 'var(--warn)' }}
                 >
-                  {status}
+                  {status === 'behind'
+                    ? t('course.behind')
+                    : status === 'ahead'
+                      ? t('course.ahead')
+                      : t('course.onTrack')}
                 </span>
                 {week.week !== calendarWeek && (
                   <button className="ghost" onClick={() => goToWeek(calendarWeek)}>
-                    Jump to today (week {calendarWeek})
+                    {t('course.jumpToToday', { week: calendarWeek })}
                   </button>
                 )}
               </>
             )}
             {calendarWeek === null && (
               <span className="muted" style={{ fontSize: 13 }}>
-                Outside the course dates, so pick a week yourself.
+                {t('course.outsideDates')}
               </span>
             )}
           </div>
 
           <p style={{ marginBottom: 8 }}>{week.focus}</p>
           <p style={{ margin: '0 0 8px' }}>
-            <strong>Goal:</strong> {week.goal}
+            <strong>{t('common.goal')}:</strong> {week.goal}
           </p>
           {week.watch && (
             <p style={{ margin: '0 0 8px', color: 'var(--warn)' }}>
-              <strong>Watch out:</strong> {week.watch}
+              <strong>{t('common.watchOut')}:</strong> {week.watch}
             </p>
           )}
           {week.items.length > 0 && (
             <div className="row" style={{ flexWrap: 'wrap' }}>
               <span className="label" style={{ margin: 0 }}>
-                This week
+                {t('course.thisWeek')}
               </span>
               {week.items.map((id) => {
-                const item = ALL_ITEMS.find((i) => i.id === id)
-                if (!item) return null
+                const found = ALL_ITEMS.find((i) => i.id === id)
+                if (!found) return null
+                const item = localiseItem(found, lang)
                 return (
                   <button key={id} onClick={() => start(item)}>
                     {item.title}
@@ -413,18 +433,18 @@ export default function LearnPage() {
           )}
           <details style={{ marginTop: 12 }}>
             <summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>
-              The whole plan, 20 weeks to New Year's Eve
+              {t('course.wholePlan', { total: COURSE.length })}
             </summary>
             <div style={{ marginTop: 10 }}>
               {PHASES.map((phase) => (
                 <div key={phase.id} style={{ marginBottom: 12 }}>
-                  <strong>{phase.title}</strong>
+                  <strong>{localisePhase(phase, lang).title}</strong>
                   <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
-                    {phase.about}
+                    {localisePhase(phase, lang).about}
                   </div>
                   <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
                     {phase.weeks.map((n) => {
-                      const w = COURSE.find((c) => c.week === n)!
+                      const w = localiseWeek(COURSE.find((c) => c.week === n)!, lang)
                       return (
                         <li
                           key={n}
@@ -447,18 +467,17 @@ export default function LearnPage() {
 
           {week.items.length === 0 && (
             <p className="muted" style={{ fontSize: 13, margin: '10px 0 0' }}>
-              No set exercise this week: it is about the song you chose, which lives in{' '}
-              <strong>Your own melodies</strong> further down this page.
+              {t('course.ownSong')}
             </p>
           )}
         </div>
 
       {/* ---------------- Fingering explorer ---------------- */}
       <div className="panel">
-        <h2>Fingering chart</h2>
+        <h2>{t('learn.fingeringChart')}</h2>
         <div className="row" style={{ alignItems: 'flex-start', gap: 28 }}>
           <div style={{ minWidth: 240 }}>
-            <div className="label">Which keys for a note</div>
+            <div className="label">{t('learn.whichKeys')}</div>
             <select
               value={lookupNote}
               onChange={(e) => setLookupNote(Number(e.target.value))}
@@ -478,10 +497,10 @@ export default function LearnPage() {
           </div>
 
           <div style={{ flex: 1, minWidth: 240 }}>
-            <div className="label">Keys to press</div>
+            <div className="label">{t('learn.keysToPress')}</div>
             {lookupFingering && lookupFingering.keys.length === 0 ? (
               <p style={{ marginTop: 4 }}>
-                <strong>No keys at all.</strong> Open C#, which is what comes out if you just blow.
+                <strong>{t('learn.noKeysAtAll')}</strong> {t('learn.openCsharp')}
               </p>
             ) : (
               <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
@@ -500,17 +519,17 @@ export default function LearnPage() {
             )}
             {lookupFingering?.alternates?.length ? (
               <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>
-                Also playable as:{' '}
-                {lookupFingering.alternates.map((a) => a.label).join(', ')}. All of them make the
-                same note, and the trainer accepts any of them.
+                {t('learn.alsoPlayable', {
+                  list: lookupFingering.alternates.map((a) => a.label).join(', '),
+                })}
               </p>
             ) : null}
           </div>
 
           <div style={{ minWidth: 240 }}>
-            <div className="label">Press keys, see the note</div>
+            <div className="label">{t('learn.pressKeysSeeNote')}</div>
             <p className="muted" style={{ fontSize: 13, margin: '4px 0 8px' }}>
-              Click the keys you are holding and this says what would come out.
+              {t('learn.clickKeys')}
             </p>
             <div className="row" style={{ alignItems: 'flex-start' }}>
               <Fingering keys={pressed} onToggle={togglePressed} size={130} />
@@ -525,14 +544,14 @@ export default function LearnPage() {
                       {guess.via ? ` (${guess.via} fingering)` : ''}
                     </>
                   ) : pressed.length === 0 ? (
-                    'No keys pressed is open C#5. Click a key to start.'
+                    t('learn.noKeysPressed')
                   ) : (
-                    'That combination is not a standard note. Check the chart on the left.'
+                    t('learn.notStandard')
                   )}
                 </div>
                 {pressed.length > 0 && (
                   <button className="ghost" onClick={() => setPressed([])} style={{ marginTop: 8 }}>
-                    Clear
+                    {t('common.clear')}
                   </button>
                 )}
               </div>
@@ -540,8 +559,10 @@ export default function LearnPage() {
           </div>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
-          Covers written {noteName(FINGERING_LOW)} to {noteName(FINGERING_HIGH)}. The palm key notes
-          above that are not included, and the manual's chart on pages 20 and 21 is the authority.
+          {t('learn.coverage', {
+            low: noteName(FINGERING_LOW),
+            high: noteName(FINGERING_HIGH),
+          })}
         </p>
       </div>
 
@@ -551,20 +572,24 @@ export default function LearnPage() {
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
             <h2 style={{ marginBottom: 0 }}>{active.title}</h2>
             <button className="ghost" onClick={() => setActiveId(null)}>
-              Close
+              {t('common.close')}
             </button>
           </div>
           <p className="muted" style={{ marginTop: 6 }}>{active.about}</p>
           {active.tip && (
             <p style={{ fontSize: 14, marginTop: -6 }}>
-              <strong>Tip:</strong> {active.tip}
+              <strong>{t('common.tip')}:</strong> {active.tip}
             </p>
           )}
 
           <div className="row" style={{ alignItems: 'flex-start', gap: 28, marginTop: 8 }}>
             <div style={{ minWidth: 160 }}>
               <div className="label">
-                {player.playing ? 'Listening' : running ? 'Play this note' : 'Ready'}
+                {player.playing
+                  ? t('learn.listening')
+                  : running
+                    ? t('learn.playThisNote')
+                    : t('learn.ready')}
               </div>
               <div style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}>
                 {player.index !== null && segment
@@ -579,11 +604,9 @@ export default function LearnPage() {
                 </div>
               )}
               <div className="muted" style={{ fontSize: 13 }}>
-                sounds{' '}
-                {noteName(
-                  toConcert(target ?? segment?.notes[0] ?? 60, input.voice.semitones),
-                )}{' '}
-                concert
+                {t('learn.soundsConcert', {
+                  note: noteName(toConcert(target ?? segment?.notes[0] ?? 60, input.voice.semitones)),
+                })}
               </div>
               <div style={{ marginTop: 10 }}>
                 <Fingering
@@ -601,13 +624,13 @@ export default function LearnPage() {
             <div style={{ flex: 1, minWidth: 260 }}>
               {active.phrases && active.phrases.length > 1 && (
                 <div style={{ marginBottom: 12 }}>
-                  <div className="label">Practise which line</div>
+                  <div className="label">{t('learn.practiseWhichLine')}</div>
                   <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
                     <button
                       className={phraseIndex === null ? '' : 'ghost'}
                       onClick={() => selectPhrase(null)}
                     >
-                      Whole thing
+                      {t('learn.wholeThing')}
                     </button>
                     {active.phrases.map((p: Phrase, i: number) => (
                       <button
@@ -656,31 +679,33 @@ export default function LearnPage() {
                       /{segment!.notes.length}
                     </span>
                   </div>
-                  <div className="label">Progress</div>
+                  <div className="label">{t('learn.progress')}</div>
                 </div>
                 <div className="stat">
                   <div className="value">{accuracy}%</div>
-                  <div className="label">Accuracy</div>
+                  <div className="label">{t('learn.accuracy')}</div>
                 </div>
                 <div className="stat">
                   <div className="value">{wrong}</div>
-                  <div className="label">Wrong notes</div>
+                  <div className="label">{t('learn.wrongNotes')}</div>
                 </div>
                 <div className="stat">
                   <div className="value">{formatDuration(elapsed)}</div>
-                  <div className="label">Time</div>
+                  <div className="label">{t('learn.time')}</div>
                 </div>
               </div>
 
               <div className="row" style={{ marginTop: 12, alignItems: 'center', gap: 10 }}>
                 <span className="label" style={{ margin: 0 }}>
-                  Heard
+                  {t('learn.heard')}
                 </span>
                 <span style={{ fontSize: 18, fontWeight: 600 }}>
-                  {lastHeard === null ? 'nothing yet' : noteName(lastHeard)}
+                  {lastHeard === null ? t('learn.nothingYet') : noteName(lastHeard)}
                 </span>
                 {input.offset !== 0 && (
-                  <span className="badge">correction {describeOffset(input.offset)}</span>
+                  <span className="badge">
+                    {t('learn.correctionBadge', { amount: describeOffset(input.offset) })}
+                  </span>
                 )}
               </div>
 
@@ -690,19 +715,20 @@ export default function LearnPage() {
                   style={{ margin: '10px 0 0', padding: 12, background: 'var(--panel-2)' }}
                 >
                   <p style={{ margin: '0 0 8px', fontSize: 14 }}>
-                    Playing the fingering shown and it is not passing? If the app hears{' '}
-                    <strong>{noteName(lastHeard)}</strong> every time you play{' '}
-                    <strong>{noteName(target)}</strong>, your instrument is reporting notes a fixed
-                    distance out. One click fixes every note at once.
+                    {t('learn.notPassing', {
+                      heard: noteName(lastHeard),
+                      target: noteName(target),
+                    })}
                   </p>
                   <div className="row">
                     <button onClick={() => input.calibrate(target, lastHeard)}>
-                      Correct by {target - lastHeard > 0 ? '+' : ''}
-                      {target - lastHeard} semitones
+                      {t('learn.correctBy', {
+                        amount: `${target - lastHeard > 0 ? '+' : ''}${target - lastHeard}`,
+                      })}
                     </button>
                     {input.offset !== 0 && (
                       <button className="ghost" onClick={() => input.setOffset(0)}>
-                        Clear correction
+                        {t('learn.clearCorrection')}
                       </button>
                     )}
                   </div>
@@ -714,17 +740,17 @@ export default function LearnPage() {
               )}
               {done && (
                 <p style={{ color: 'var(--good)', marginTop: 10, marginBottom: 0 }}>
-                  Finished. {correct} right, {wrong} wrong, {accuracy}% accuracy.
+                  {t('learn.finished', { correct, wrong, accuracy })}
                 </p>
               )}
 
               <div className="row" style={{ marginTop: 14, alignItems: 'center' }}>
                 <button onClick={() => start(active)} disabled={input.status !== 'ready'}>
-                  {running ? 'Restart' : 'Start'}
+                  {running ? t('common.restart') : t('common.start')}
                 </button>
                 {player.playing ? (
                   <button className="ghost" onClick={player.stop}>
-                    Stop demo
+                    {t('learn.stopDemo')}
                   </button>
                 ) : (
                   <button
@@ -738,7 +764,7 @@ export default function LearnPage() {
                       })
                     }
                   >
-                    Listen first
+                    {t('learn.listenFirst')}
                   </button>
                 )}
                 <label className="row" style={{ gap: 6, alignItems: 'center', margin: 0 }}>
@@ -748,7 +774,7 @@ export default function LearnPage() {
                     onChange={(e) => setShowStaff(e.target.checked)}
                     style={{ width: 'auto' }}
                   />
-                  <span style={{ fontSize: 13 }}>Show music</span>
+                  <span style={{ fontSize: 13 }}>{t('learn.showMusic')}</span>
                 </label>
                 <label htmlFor="tempo" className="label" style={{ margin: 0 }}>
                   {tempo} bpm
@@ -765,11 +791,11 @@ export default function LearnPage() {
                 />
                 {user ? (
                   <button className="ghost" onClick={save} disabled={attempts === 0}>
-                    Save attempt
+                    {t('learn.saveAttempt')}
                   </button>
                 ) : (
                   <Link href="/login">
-                    <button className="ghost">Log in to track it</button>
+                    <button className="ghost">{t('learn.logInToTrack')}</button>
                   </Link>
                 )}
                 {saveMsg && (
@@ -780,8 +806,7 @@ export default function LearnPage() {
               </div>
               {input.status !== 'ready' && (
                 <p className="error" style={{ marginTop: 8, marginBottom: 0 }}>
-                  Not connected, so nothing can be scored. Use the Connect button at the top of
-                  this page.
+                  {t('learn.notConnectedScore')}
                 </p>
               )}
             </div>
@@ -791,31 +816,32 @@ export default function LearnPage() {
 
       {/* ---------------- The material ---------------- */}
       <ItemList
-        title="Warm-ups"
+        title={t('learn.warmups')}
         items={WARMUPS}
         stats={stats}
         onStart={start}
         onListen={(item) =>
           player.play(item.notes, item.beats, { bpm: tempo, transpose: input.voice.semitones })
         }
+        lang={lang}
+        t={t}
       />
       <ItemList
-        title="Songs"
+        title={t('learn.songs')}
         items={SONGS}
         stats={stats}
         onStart={start}
         onListen={(item) =>
           player.play(item.notes, item.beats, { bpm: tempo, transpose: input.voice.semitones })
         }
+        lang={lang}
+        t={t}
       />
 
       <div className="panel">
-        <h2>Your own melodies</h2>
+        <h2>{t('learn.yourMelodies')}</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Type any tune as note names and it joins the list, tracked and drillable exactly like
-          the others. <strong>One line per phrase</strong>, with an optional name before a colon,
-          so you can practise a chorus on its own. <strong>Octave numbers are optional</strong>:
-          bare letters are placed next to the note before them, which is how a melody moves.
+          {t('learn.melodyIntro')}
         </p>
         <pre
           className="mono"
@@ -834,19 +860,19 @@ export default function LearnPage() {
 
         <div className="row" style={{ gap: 16, alignItems: 'flex-end', marginBottom: 10 }}>
           <div style={{ minWidth: 220 }}>
-            <label htmlFor="notation">Written as</label>
+            <label htmlFor="notation">{t('learn.writtenAs')}</label>
             <select
               id="notation"
               value={draftNumbers ? 'numbers' : 'letters'}
               onChange={(e) => setDraftNumbers(e.target.value === 'numbers')}
             >
-              <option value="letters">Note letters (C, D, F#, Bb)</option>
-              <option value="numbers">Numbers (kalimba and jianpu tabs)</option>
+              <option value="letters">{t('learn.noteLetters')}</option>
+              <option value="numbers">{t('learn.numbersNotation')}</option>
             </select>
           </div>
           {draftNumbers && (
             <div style={{ minWidth: 160 }}>
-              <label htmlFor="tonic">Key: 1 means</label>
+              <label htmlFor="tonic">{t('learn.keyMeans')}</label>
               <select
                 id="tonic"
                 value={draftTonic}
@@ -864,10 +890,7 @@ export default function LearnPage() {
 
         {draftNumbers && (
           <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-            1 to 7 are the degrees of the major scale. An apostrophe after a number is the octave
-            above (<code>3&apos;</code>), a comma is the octave below (<code>5,</code>), and{' '}
-            <code>#</code> or <code>b</code> before it work as usual. Tabs print those octave marks
-            as dots above and below the number.
+            {t('learn.numbersHelp')}
           </p>
         )}
 
@@ -882,7 +905,7 @@ export default function LearnPage() {
                   {stats[c.id] ? ` · best ${stats[c.id].bestAccuracy}%` : ''}
                 </div>
                 <div className="row">
-                  <button onClick={() => start(c)}>Practise</button>
+                  <button onClick={() => start(c)}>{t('common.practise')}</button>
                   <button
                     className="ghost"
                     onClick={() =>
@@ -892,13 +915,13 @@ export default function LearnPage() {
                       })
                     }
                   >
-                    Listen
+                    {t('common.listen')}
                   </button>
                   <button
                     className="ghost"
                     onClick={() => saveCustoms(customs.filter((x) => x.id !== c.id))}
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>
@@ -908,16 +931,16 @@ export default function LearnPage() {
 
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <div style={{ minWidth: 200 }}>
-            <label htmlFor="mel-title">Name</label>
+            <label htmlFor="mel-title">{t('common.name')}</label>
             <input
               id="mel-title"
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
-              placeholder="Cant Take My Eyes Off You"
+              placeholder={t('learn.melodyNamePlaceholder')}
             />
           </div>
           <div style={{ flex: 1, minWidth: 280 }}>
-            <label htmlFor="mel-notes">Notes, one line per phrase</label>
+            <label htmlFor="mel-notes">{t('learn.notesOneLine')}</label>
             <textarea
               id="mel-notes"
               value={draftNotes}
@@ -936,7 +959,7 @@ export default function LearnPage() {
             />
           </div>
           <div style={{ paddingTop: 22 }}>
-            <button onClick={addCustom}>Add</button>
+            <button onClick={addCustom}>{t('common.add')}</button>
           </div>
         </div>
 
@@ -948,8 +971,7 @@ export default function LearnPage() {
             style={{ width: 'auto' }}
           />
           <span style={{ fontSize: 14 }}>
-            These notes are <strong>concert pitch</strong> (piano, voice or guitar sheet music).
-            Convert them for my {input.voice.label.split('  ')[1] || 'instrument'}.
+            {t('learn.concertPitchLabel')}
           </span>
         </label>
         <label className="row" style={{ gap: 8, alignItems: 'center', marginTop: 4 }}>
@@ -960,22 +982,25 @@ export default function LearnPage() {
             style={{ width: 'auto' }}
           />
           <span style={{ fontSize: 14 }}>
-            Move the whole tune by octaves if needed, so it lands in the range you can play.
+            {t('learn.fitRangeLabel')}
           </span>
         </label>
 
         {draftError && <p className="error">{draftError}</p>}
         {draftNotes.trim() !== '' && !draftError && (
           <p className="muted" style={{ fontSize: 13 }}>
-            Reads as {draftParsed.notes.length} notes in {draftParsed.phrases.length} phrase
-            {draftParsed.phrases.length === 1 ? '' : 's'}:{' '}
-            {formatMelody(draftParsed.notes.slice(0, 12)) || 'nothing yet'}
+            {t('learn.readsAs', {
+              count: draftParsed.notes.length,
+              phrases: draftParsed.phrases.length,
+              preview: formatMelody(draftParsed.notes.slice(0, 12)) || t('learn.nothingYet'),
+            })}
             {draftParsed.notes.length > 12 ? ' ...' : ''}
-            {draftConcert && draftParsed.notes.length > 0 && ' (converted to what you finger)'}
+            {draftConcert && draftParsed.notes.length > 0 && t('learn.converted')}
             {draftParsed.octaves !== 0 &&
-              `, moved ${draftParsed.octaves > 0 ? 'up' : 'down'} ${Math.abs(draftParsed.octaves)} octave${
-                Math.abs(draftParsed.octaves) === 1 ? '' : 's'
-              } to fit`}
+              t('learn.movedOctaves', {
+                direction: draftParsed.octaves > 0 ? t('learn.up') : t('learn.down'),
+                count: Math.abs(draftParsed.octaves),
+              })}
           </p>
         )}
       </div>
@@ -989,18 +1014,23 @@ function ItemList({
   stats,
   onStart,
   onListen,
+  lang,
+  t,
 }: {
   title: string
   items: PracticeItem[]
   stats: Record<string, ItemStat>
   onStart: (item: PracticeItem) => void
   onListen: (item: PracticeItem) => void
+  lang: Lang
+  t: (key: StringKey, values?: Record<string, string | number>) => string
 }) {
   return (
     <div className="panel">
       <h2>{title}</h2>
       <div className="row" style={{ flexWrap: 'wrap', alignItems: 'stretch' }}>
-        {items.map((item) => {
+        {items.map((raw) => {
+          const item = localiseItem(raw, lang)
           const range = itemRange(item)
           const stat = stats[item.id]
           return (
@@ -1020,15 +1050,22 @@ function ItemList({
                 {item.about}
               </p>
               <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                {item.notes.length} notes, {noteName(range.low)} to {noteName(range.high)}
+                {t('learn.notesFromTo', {
+                  count: item.notes.length,
+                  low: noteName(range.low),
+                  high: noteName(range.high),
+                })}
                 {stat
-                  ? ` · played ${stat.timesPlayed}× · best ${stat.bestAccuracy}%`
-                  : ' · not played yet'}
+                  ? ` · ${t('learn.playedTimes', {
+                      times: stat.timesPlayed,
+                      best: stat.bestAccuracy,
+                    })}`
+                  : ` · ${t('learn.notPlayedYet')}`}
               </div>
               <div className="row">
-                <button onClick={() => onStart(item)}>Practise</button>
+                <button onClick={() => onStart(item)}>{t('common.practise')}</button>
                 <button className="ghost" onClick={() => onListen(item)}>
-                  Listen
+                  {t('common.listen')}
                 </button>
               </div>
             </div>
