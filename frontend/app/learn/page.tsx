@@ -1,0 +1,1040 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import Fingering from '@/components/Fingering'
+import Staff from '@/components/Staff'
+import { useInputContext } from '@/lib/input-context'
+import { useMelodyPlayer } from '@/hooks/useMelodyPlayer'
+import { useAuth } from '@/lib/auth-context'
+import { api, type ItemStat } from '@/lib/api'
+import {
+  ALL_ITEMS,
+  SONGS,
+  WARMUPS,
+  formatMelody,
+  itemRange,
+  parseMelody,
+  parseMelodyScript,
+  phraseNotes,
+  fitToRange,
+  type Phrase,
+  type PracticeItem,
+} from '@/lib/curriculum'
+import {
+  FINGERING_HIGH,
+  FINGERING_LOW,
+  SAX_KEYS,
+  fingeringFor,
+  noteForKeys,
+  type SaxKeyId,
+} from '@/lib/fingerings'
+import { formatDuration, noteName, toConcert, yamahaName } from '@/lib/notes'
+import { describeOffset } from '@/lib/calibration'
+import { COURSE, PHASES, weekDates, weekFor, weekStatus } from '@/lib/course'
+
+const CUSTOM_STORAGE_KEY = 'yds120.customMelodies'
+const WEEK_STORAGE_KEY = 'yds120.courseWeek'
+
+type CustomMelody = { id: string; title: string; notes: number[]; phrases?: Phrase[] }
+
+export default function LearnPage() {
+  const input = useInputContext()
+  const player = useMelodyPlayer()
+  const { user } = useAuth()
+  const [tempo, setTempo] = useState(90)
+  const [showStaff, setShowStaff] = useState(true)
+
+  // Which week you are working on. Starts at 1 so the server and the first
+  // client render agree, then the effect moves it to where you actually are.
+  // You can also move it yourself, because the plan says to repeat a week when
+  // one goes badly, and the app has to let you.
+  const [workingWeek, setWorkingWeek] = useState(1)
+  const [calendarWeek, setCalendarWeek] = useState<number | null>(null)
+
+  useEffect(() => {
+    const onCalendar = weekFor(new Date())?.week ?? null
+    setCalendarWeek(onCalendar)
+    const saved = Number(localStorage.getItem(WEEK_STORAGE_KEY))
+    setWorkingWeek(saved >= 1 && saved <= COURSE.length ? saved : (onCalendar ?? 1))
+  }, [])
+
+  const goToWeek = useCallback((next: number) => {
+    const clamped = Math.min(COURSE.length, Math.max(1, next))
+    setWorkingWeek(clamped)
+    localStorage.setItem(WEEK_STORAGE_KEY, String(clamped))
+  }, [])
+
+  const week = COURSE.find((w) => w.week === workingWeek) ?? COURSE[0]
+  const phase = PHASES.find((p) => p.weeks.includes(week.week))
+  const status = calendarWeek === null ? null : weekStatus(week.week, calendarWeek)
+
+  // ---- Fingering explorer -------------------------------------------------
+  const [lookupNote, setLookupNote] = useState(73) // open C#5, the no-keys note
+  const [pressed, setPressed] = useState<SaxKeyId[]>([])
+  const guess = useMemo(() => noteForKeys(pressed), [pressed])
+
+  const togglePressed = useCallback((key: SaxKeyId) => {
+    setPressed((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
+  }, [])
+
+  // Playing a note fills the explorer in, so the instrument can drive it.
+  useEffect(
+    () =>
+      input.onNoteOn((note) => {
+        if (note >= FINGERING_LOW && note <= FINGERING_HIGH) setLookupNote(note)
+      }),
+    [input],
+  )
+
+  const lookupFingering = fingeringFor(lookupNote)
+
+  // ---- Custom melodies ----------------------------------------------------
+  const [customs, setCustoms] = useState<CustomMelody[]>([])
+  const [draftTitle, setDraftTitle] = useState('')
+  const [draftNotes, setDraftNotes] = useState('')
+  const [draftError, setDraftError] = useState<string | null>(null)
+  // Sheet music for piano, voice or guitar is in concert pitch, and an alto
+  // fingers it nine semitones higher. Doing that conversion by hand for a
+  // whole song is where people give up.
+  const [draftConcert, setDraftConcert] = useState(false)
+  // Piano parts often sit an octave or two below a saxophone. Shifting the
+  // whole melody keeps the tune and makes it playable.
+  const [draftFit, setDraftFit] = useState(true)
+  // Kalimba and jianpu tabs are written as scale degrees, not note names.
+  const [draftNumbers, setDraftNumbers] = useState(false)
+  const [draftTonic, setDraftTonic] = useState(72) // C5
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_STORAGE_KEY)
+      if (raw) setCustoms(JSON.parse(raw))
+    } catch {
+      // A corrupt entry should not take the page down with it.
+    }
+  }, [])
+
+  const saveCustoms = useCallback((next: CustomMelody[]) => {
+    setCustoms(next)
+    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(next))
+  }, [])
+
+  const draftTranspose = draftConcert ? -input.voice.semitones : 0
+  const draftParsed = useMemo(() => {
+    const parsed = parseMelodyScript(
+      draftNotes,
+      draftTranspose,
+      draftNumbers ? { numbers: true, tonic: draftTonic } : undefined,
+    )
+    if (!draftFit) return { ...parsed, octaves: 0 }
+    const fitted = fitToRange(parsed.notes)
+    return { ...parsed, notes: fitted.notes, octaves: fitted.octaves }
+  }, [draftNotes, draftTranspose, draftFit, draftNumbers, draftTonic])
+
+  function addCustom() {
+    if (!draftTitle.trim()) return setDraftError('Give it a name first.')
+    if (draftParsed.errors.length) {
+      return setDraftError(
+        `Could not read: ${draftParsed.errors.join(', ')}. Use note names like C5, F#5, Bb4. After conversion they must land between ${noteName(FINGERING_LOW)} and ${noteName(FINGERING_HIGH)}.`,
+      )
+    }
+    if (draftParsed.notes.length < 2) return setDraftError('That is not enough notes to practise.')
+    saveCustoms([
+      ...customs,
+      {
+        id: `custom-${Date.now()}`,
+        title: draftTitle.trim(),
+        notes: draftParsed.notes,
+        phrases: draftParsed.phrases,
+      },
+    ])
+    setDraftTitle('')
+    setDraftNotes('')
+    setDraftError(null)
+  }
+
+  const customItems: PracticeItem[] = customs.map((c) => ({
+    id: c.id,
+    title: c.title,
+    kind: 'song',
+    level: 2,
+    about: 'Your own melody.',
+    notes: c.notes,
+    phrases: c.phrases?.length ? c.phrases : [{ label: 'All of it', start: 0, end: c.notes.length }],
+  }))
+
+  // ---- Practice runner ----------------------------------------------------
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const active = useMemo(
+    () => [...ALL_ITEMS, ...customItems].find((i) => i.id === activeId) || null,
+    [activeId, customItems],
+  )
+  const [phraseIndex, setPhraseIndex] = useState<number | null>(null)
+  const segment = useMemo(
+    () => (active ? phraseNotes(active, phraseIndex) : null),
+    [active, phraseIndex],
+  )
+  const [index, setIndex] = useState(0)
+  const [correct, setCorrect] = useState(0)
+  const [wrong, setWrong] = useState(0)
+  const [hint, setHint] = useState<string | null>(null)
+  const [lastHeard, setLastHeard] = useState<number | null>(null)
+  const [running, setRunning] = useState(false)
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [elapsed, setElapsed] = useState(0)
+  const [done, setDone] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
+
+  // The note callback must see current values without resubscribing mid-run.
+  const runRef = useRef({ running: false, index: 0, notes: [] as number[] })
+  runRef.current = { running, index, notes: segment?.notes ?? [] }
+
+  useEffect(() => {
+    if (!running || startedAt === null) return
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000)
+    return () => clearInterval(t)
+  }, [running, startedAt])
+
+  const playingRef = useRef(false)
+  playingRef.current = player.playing
+
+  const handleNote = useCallback((note: number) => {
+    // The demo plays through the speakers, and in microphone mode the app is
+    // listening to those same speakers. Without this it would mark its own
+    // playback as your playing.
+    if (playingRef.current) return
+    setLastHeard(note)
+    const { running: isRunning, index: at, notes } = runRef.current
+    if (!isRunning || notes.length === 0) return
+    const target = notes[at]
+
+    if (note === target) {
+      setCorrect((c) => c + 1)
+      setHint(null)
+      setIndex((i) => {
+        const next = i + 1
+        if (next >= notes.length) {
+          setRunning(false)
+          setDone(true)
+          return i
+        }
+        return next
+      })
+      return
+    }
+
+    setWrong((w) => w + 1)
+    setHint(
+      note % 12 === target % 12
+        ? `Right note, wrong octave: that was ${noteName(note)}, the line wants ${noteName(target)}.`
+        : `That was ${noteName(note)}, the line wants ${noteName(target)}.`,
+    )
+  }, [])
+
+  useEffect(() => input.onNoteOn(handleNote), [input, handleNote])
+
+  /** Switching phrase resets the attempt, since the target sequence changed. */
+  function selectPhrase(next: number | null) {
+    player.stop()
+    setPhraseIndex(next)
+    setRunning(false)
+    setIndex(0)
+    setCorrect(0)
+    setWrong(0)
+    setHint(null)
+    setDone(false)
+  }
+
+  function start(item: PracticeItem) {
+    player.stop()
+    if (item.id !== activeId) setPhraseIndex(null)
+    setActiveId(item.id)
+    if (input.status !== 'ready') {
+      setRunning(false)
+      setSaveMsg(null)
+      return
+    }
+    setIndex(0)
+    setCorrect(0)
+    setWrong(0)
+    setHint(null)
+    setDone(false)
+    setSaveMsg(null)
+    setElapsed(0)
+    setStartedAt(Date.now())
+    setRunning(true)
+    input.reset()
+  }
+
+  async function save() {
+    if (!active) return
+    try {
+      const counts: Record<string, number> = {}
+      Object.entries(input.noteCounts).forEach(([n, c]) => (counts[n] = c))
+      await api.saveSession({
+        source: active.kind,
+        item: active.id,
+        durationSeconds: elapsed,
+        notesPlayed: correct + wrong,
+        correctNotes: correct,
+        wrongNotes: wrong,
+        noteCounts: counts,
+      })
+      setSaveMsg('Saved to your progress.')
+      loadStats()
+    } catch (err) {
+      setSaveMsg(err instanceof Error ? err.message : 'save failed')
+    }
+  }
+
+  // ---- Per item history ---------------------------------------------------
+  const [stats, setStats] = useState<Record<string, ItemStat>>({})
+  const loadStats = useCallback(() => {
+    if (!user) return
+    api
+      .summary()
+      .then((s) => {
+        const byItem: Record<string, ItemStat> = {}
+        ;(s.itemStats || []).forEach((st) => (byItem[st.item] = st))
+        setStats(byItem)
+      })
+      .catch(() => {
+        // Not being logged in is not an error worth shouting about here.
+      })
+  }, [user])
+  useEffect(loadStats, [loadStats])
+
+  const attempts = correct + wrong
+  const accuracy = attempts === 0 ? 0 : Math.round((correct / attempts) * 100)
+  const target = segment && running ? segment.notes[index] : null
+  const targetFingering = target === null ? null : fingeringFor(target)
+
+  return (
+    <>
+      <h1>Learn</h1>
+      <p className="muted">
+        Which keys make which note, and material to practise with. Everything here is written
+        pitch, the note you finger, which is what the fingering chart in the manual shows.
+      </p>
+
+      {input.status !== 'ready' && (
+        <div className="panel">
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <p className="muted" style={{ margin: 0 }}>
+              <strong>Nothing is connected yet.</strong> The fingering chart works without the
+              instrument, but the trainer cannot hear you until an input is running.
+            </p>
+            <div className="row">
+              <button onClick={input.connect}>
+                {input.mode === 'mic' ? 'Start listening' : 'Connect MIDI'}
+              </button>
+              <Link href="/monitor">
+                <button className="ghost">Input settings</button>
+              </Link>
+            </div>
+          </div>
+          {input.error && <p className="error">{input.error}</p>}
+        </div>
+      )}
+
+      {/* ---------------- The course ---------------- */}
+      <div className="panel" style={{ borderColor: 'var(--accent)' }}>
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <h2 style={{ marginBottom: 0 }}>
+              Week {week.week} of {COURSE.length}: {week.title}
+            </h2>
+            <span className="muted" style={{ fontSize: 13 }}>
+              {weekDates(week.week).start} to {weekDates(week.week).end}
+              {phase ? ` · ${phase.title}` : ''}
+            </span>
+          </div>
+
+          <div className="row" style={{ gap: 8, alignItems: 'center', margin: '8px 0 12px' }}>
+            <button
+              className="ghost"
+              onClick={() => goToWeek(week.week - 1)}
+              disabled={week.week === 1}
+            >
+              Previous
+            </button>
+            <button
+              className="ghost"
+              onClick={() => goToWeek(week.week + 1)}
+              disabled={week.week === COURSE.length}
+            >
+              Next week
+            </button>
+            {calendarWeek !== null && (
+              <>
+                <span
+                  className="badge"
+                  style={{ color: status === 'on track' ? 'var(--good)' : 'var(--warn)' }}
+                >
+                  {status}
+                </span>
+                {week.week !== calendarWeek && (
+                  <button className="ghost" onClick={() => goToWeek(calendarWeek)}>
+                    Jump to today (week {calendarWeek})
+                  </button>
+                )}
+              </>
+            )}
+            {calendarWeek === null && (
+              <span className="muted" style={{ fontSize: 13 }}>
+                Outside the course dates, so pick a week yourself.
+              </span>
+            )}
+          </div>
+
+          <p style={{ marginBottom: 8 }}>{week.focus}</p>
+          <p style={{ margin: '0 0 8px' }}>
+            <strong>Goal:</strong> {week.goal}
+          </p>
+          {week.watch && (
+            <p style={{ margin: '0 0 8px', color: 'var(--warn)' }}>
+              <strong>Watch out:</strong> {week.watch}
+            </p>
+          )}
+          {week.items.length > 0 && (
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              <span className="label" style={{ margin: 0 }}>
+                This week
+              </span>
+              {week.items.map((id) => {
+                const item = ALL_ITEMS.find((i) => i.id === id)
+                if (!item) return null
+                return (
+                  <button key={id} onClick={() => start(item)}>
+                    {item.title}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <details style={{ marginTop: 12 }}>
+            <summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>
+              The whole plan, 20 weeks to New Year's Eve
+            </summary>
+            <div style={{ marginTop: 10 }}>
+              {PHASES.map((phase) => (
+                <div key={phase.id} style={{ marginBottom: 12 }}>
+                  <strong>{phase.title}</strong>
+                  <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+                    {phase.about}
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+                    {phase.weeks.map((n) => {
+                      const w = COURSE.find((c) => c.week === n)!
+                      return (
+                        <li
+                          key={n}
+                          style={{
+                            color: n === week.week ? 'var(--accent)' : undefined,
+                            fontWeight: n === week.week ? 600 : undefined,
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => goToWeek(n)}
+                        >
+                          Week {n} ({weekDates(n).start}): {w.title}. {w.goal}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </details>
+
+          {week.items.length === 0 && (
+            <p className="muted" style={{ fontSize: 13, margin: '10px 0 0' }}>
+              No set exercise this week: it is about the song you chose, which lives in{' '}
+              <strong>Your own melodies</strong> further down this page.
+            </p>
+          )}
+        </div>
+
+      {/* ---------------- Fingering explorer ---------------- */}
+      <div className="panel">
+        <h2>Fingering chart</h2>
+        <div className="row" style={{ alignItems: 'flex-start', gap: 28 }}>
+          <div style={{ minWidth: 240 }}>
+            <div className="label">Which keys for a note</div>
+            <select
+              value={lookupNote}
+              onChange={(e) => setLookupNote(Number(e.target.value))}
+              style={{ marginBottom: 10 }}
+            >
+              {Array.from({ length: FINGERING_HIGH - FINGERING_LOW + 1 }, (_, i) => {
+                const n = FINGERING_LOW + i
+                return (
+                  <option key={n} value={n}>
+                    {noteName(n)} / Yamaha {yamahaName(n)} (sounds{' '}
+                    {noteName(toConcert(n, input.voice.semitones))})
+                  </option>
+                )
+              })}
+            </select>
+            <Fingering keys={lookupFingering?.keys || []} size={150} />
+          </div>
+
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div className="label">Keys to press</div>
+            {lookupFingering && lookupFingering.keys.length === 0 ? (
+              <p style={{ marginTop: 4 }}>
+                <strong>No keys at all.</strong> Open C#, which is what comes out if you just blow.
+              </p>
+            ) : (
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                {lookupFingering?.keys.map((k) => {
+                  const info = SAX_KEYS.find((s) => s.id === k)
+                  return (
+                    <li key={k}>
+                      <strong>{info?.label}</strong>{' '}
+                      <span className="muted" style={{ fontSize: 13 }}>
+                        {info?.finger}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {lookupFingering?.alternates?.length ? (
+              <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>
+                Also playable as:{' '}
+                {lookupFingering.alternates.map((a) => a.label).join(', ')}. All of them make the
+                same note, and the trainer accepts any of them.
+              </p>
+            ) : null}
+          </div>
+
+          <div style={{ minWidth: 240 }}>
+            <div className="label">Press keys, see the note</div>
+            <p className="muted" style={{ fontSize: 13, margin: '4px 0 8px' }}>
+              Click the keys you are holding and this says what would come out.
+            </p>
+            <div className="row" style={{ alignItems: 'flex-start' }}>
+              <Fingering keys={pressed} onToggle={togglePressed} size={130} />
+              <div>
+                <div style={{ fontSize: 30, fontWeight: 700 }}>
+                  {guess ? noteName(guess.written) : '?'}
+                </div>
+                <div className="muted" style={{ fontSize: 13, maxWidth: 170 }}>
+                  {guess ? (
+                    <>
+                      sounds {noteName(toConcert(guess.written, input.voice.semitones))} concert
+                      {guess.via ? ` (${guess.via} fingering)` : ''}
+                    </>
+                  ) : pressed.length === 0 ? (
+                    'No keys pressed is open C#5. Click a key to start.'
+                  ) : (
+                    'That combination is not a standard note. Check the chart on the left.'
+                  )}
+                </div>
+                {pressed.length > 0 && (
+                  <button className="ghost" onClick={() => setPressed([])} style={{ marginTop: 8 }}>
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
+          Covers written {noteName(FINGERING_LOW)} to {noteName(FINGERING_HIGH)}. The palm key notes
+          above that are not included, and the manual's chart on pages 20 and 21 is the authority.
+        </p>
+      </div>
+
+      {/* ---------------- The runner ---------------- */}
+      {active && (
+        <div className="panel">
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <h2 style={{ marginBottom: 0 }}>{active.title}</h2>
+            <button className="ghost" onClick={() => setActiveId(null)}>
+              Close
+            </button>
+          </div>
+          <p className="muted" style={{ marginTop: 6 }}>{active.about}</p>
+          {active.tip && (
+            <p style={{ fontSize: 14, marginTop: -6 }}>
+              <strong>Tip:</strong> {active.tip}
+            </p>
+          )}
+
+          <div className="row" style={{ alignItems: 'flex-start', gap: 28, marginTop: 8 }}>
+            <div style={{ minWidth: 160 }}>
+              <div className="label">
+                {player.playing ? 'Listening' : running ? 'Play this note' : 'Ready'}
+              </div>
+              <div style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}>
+                {player.index !== null && segment
+                  ? noteName(segment.notes[player.index])
+                  : target !== null
+                    ? noteName(target)
+                    : noteName(segment?.notes[0] ?? 60)}
+              </div>
+              {segment?.lyrics && (
+                <div style={{ fontSize: 18, color: 'var(--accent)' }}>
+                  {segment.lyrics[player.index ?? (running ? index : 0)]}
+                </div>
+              )}
+              <div className="muted" style={{ fontSize: 13 }}>
+                sounds{' '}
+                {noteName(
+                  toConcert(target ?? segment?.notes[0] ?? 60, input.voice.semitones),
+                )}{' '}
+                concert
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Fingering
+                  keys={
+                    (player.index !== null && segment
+                      ? fingeringFor(segment.notes[player.index])
+                      : targetFingering || fingeringFor(segment?.notes[0] ?? 60)
+                    )?.keys || []
+                  }
+                  size={130}
+                />
+              </div>
+            </div>
+
+            <div style={{ flex: 1, minWidth: 260 }}>
+              {active.phrases && active.phrases.length > 1 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div className="label">Practise which line</div>
+                  <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                    <button
+                      className={phraseIndex === null ? '' : 'ghost'}
+                      onClick={() => selectPhrase(null)}
+                    >
+                      Whole thing
+                    </button>
+                    {active.phrases.map((p: Phrase, i: number) => (
+                      <button
+                        key={i}
+                        className={phraseIndex === i ? '' : 'ghost'}
+                        onClick={() => selectPhrase(i)}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showStaff && (
+                <div style={{ overflowX: 'auto', marginBottom: 10 }}>
+                  <Staff
+                    notes={segment!.notes}
+                    current={player.index ?? (running ? index : null)}
+                    lyrics={segment!.lyrics}
+                  />
+                </div>
+              )}
+
+              <div className="seq">
+                {segment!.notes.map((n, i) => (
+                  <div
+                    key={i}
+                    className={`step${i < index && !player.playing ? ' done' : ''}${
+                      (running && i === index) || player.index === i ? ' current' : ''
+                    }`}
+                  >
+                    <div>{noteName(n)}</div>
+                    {segment!.lyrics && (
+                      <div style={{ fontSize: 11, opacity: 0.75 }}>{segment!.lyrics[i]}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="stat-grid" style={{ marginTop: 14 }}>
+                <div className="stat">
+                  <div className="value">
+                    {index}
+                    <span style={{ fontSize: 16, color: 'var(--muted)' }}>
+                      /{segment!.notes.length}
+                    </span>
+                  </div>
+                  <div className="label">Progress</div>
+                </div>
+                <div className="stat">
+                  <div className="value">{accuracy}%</div>
+                  <div className="label">Accuracy</div>
+                </div>
+                <div className="stat">
+                  <div className="value">{wrong}</div>
+                  <div className="label">Wrong notes</div>
+                </div>
+                <div className="stat">
+                  <div className="value">{formatDuration(elapsed)}</div>
+                  <div className="label">Time</div>
+                </div>
+              </div>
+
+              <div className="row" style={{ marginTop: 12, alignItems: 'center', gap: 10 }}>
+                <span className="label" style={{ margin: 0 }}>
+                  Heard
+                </span>
+                <span style={{ fontSize: 18, fontWeight: 600 }}>
+                  {lastHeard === null ? 'nothing yet' : noteName(lastHeard)}
+                </span>
+                {input.offset !== 0 && (
+                  <span className="badge">correction {describeOffset(input.offset)}</span>
+                )}
+              </div>
+
+              {running && lastHeard !== null && target !== null && lastHeard !== target && (
+                <div
+                  className="panel"
+                  style={{ margin: '10px 0 0', padding: 12, background: 'var(--panel-2)' }}
+                >
+                  <p style={{ margin: '0 0 8px', fontSize: 14 }}>
+                    Playing the fingering shown and it is not passing? If the app hears{' '}
+                    <strong>{noteName(lastHeard)}</strong> every time you play{' '}
+                    <strong>{noteName(target)}</strong>, your instrument is reporting notes a fixed
+                    distance out. One click fixes every note at once.
+                  </p>
+                  <div className="row">
+                    <button onClick={() => input.calibrate(target, lastHeard)}>
+                      Correct by {target - lastHeard > 0 ? '+' : ''}
+                      {target - lastHeard} semitones
+                    </button>
+                    {input.offset !== 0 && (
+                      <button className="ghost" onClick={() => input.setOffset(0)}>
+                        Clear correction
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {hint && (
+                <p style={{ color: 'var(--warn)', marginTop: 10, marginBottom: 0 }}>{hint}</p>
+              )}
+              {done && (
+                <p style={{ color: 'var(--good)', marginTop: 10, marginBottom: 0 }}>
+                  Finished. {correct} right, {wrong} wrong, {accuracy}% accuracy.
+                </p>
+              )}
+
+              <div className="row" style={{ marginTop: 14, alignItems: 'center' }}>
+                <button onClick={() => start(active)} disabled={input.status !== 'ready'}>
+                  {running ? 'Restart' : 'Start'}
+                </button>
+                {player.playing ? (
+                  <button className="ghost" onClick={player.stop}>
+                    Stop demo
+                  </button>
+                ) : (
+                  <button
+                    className="ghost"
+                    onClick={() =>
+                      player.play(segment!.notes, segment!.beats, {
+                        bpm: tempo,
+                        // Play what the instrument would sound, not what you
+                        // finger, so the demo and your playing match.
+                        transpose: input.voice.semitones,
+                      })
+                    }
+                  >
+                    Listen first
+                  </button>
+                )}
+                <label className="row" style={{ gap: 6, alignItems: 'center', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={showStaff}
+                    onChange={(e) => setShowStaff(e.target.checked)}
+                    style={{ width: 'auto' }}
+                  />
+                  <span style={{ fontSize: 13 }}>Show music</span>
+                </label>
+                <label htmlFor="tempo" className="label" style={{ margin: 0 }}>
+                  {tempo} bpm
+                </label>
+                <input
+                  id="tempo"
+                  type="range"
+                  min={40}
+                  max={160}
+                  step={5}
+                  value={tempo}
+                  onChange={(e) => setTempo(Number(e.target.value))}
+                  style={{ width: 120 }}
+                />
+                {user ? (
+                  <button className="ghost" onClick={save} disabled={attempts === 0}>
+                    Save attempt
+                  </button>
+                ) : (
+                  <Link href="/login">
+                    <button className="ghost">Log in to track it</button>
+                  </Link>
+                )}
+                {saveMsg && (
+                  <span className="muted" style={{ fontSize: 13 }}>
+                    {saveMsg}
+                  </span>
+                )}
+              </div>
+              {input.status !== 'ready' && (
+                <p className="error" style={{ marginTop: 8, marginBottom: 0 }}>
+                  Not connected, so nothing can be scored. Use the Connect button at the top of
+                  this page.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- The material ---------------- */}
+      <ItemList
+        title="Warm-ups"
+        items={WARMUPS}
+        stats={stats}
+        onStart={start}
+        onListen={(item) =>
+          player.play(item.notes, item.beats, { bpm: tempo, transpose: input.voice.semitones })
+        }
+      />
+      <ItemList
+        title="Songs"
+        items={SONGS}
+        stats={stats}
+        onStart={start}
+        onListen={(item) =>
+          player.play(item.notes, item.beats, { bpm: tempo, transpose: input.voice.semitones })
+        }
+      />
+
+      <div className="panel">
+        <h2>Your own melodies</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Type any tune as note names and it joins the list, tracked and drillable exactly like
+          the others. <strong>One line per phrase</strong>, with an optional name before a colon,
+          so you can practise a chorus on its own. <strong>Octave numbers are optional</strong>:
+          bare letters are placed next to the note before them, which is how a melody moves.
+        </p>
+        <pre
+          className="mono"
+          style={{
+            background: 'var(--panel-2)',
+            padding: 10,
+            borderRadius: 8,
+            fontSize: 13,
+            overflowX: 'auto',
+          }}
+        >
+          {draftNumbers
+            ? `Intro: 3 3 4 5 5 4 3 2\nMain: 1 1 2 3 3' 2 1`
+            : `Verse: G G A G C B\nChorus: C D E F G`}
+        </pre>
+
+        <div className="row" style={{ gap: 16, alignItems: 'flex-end', marginBottom: 10 }}>
+          <div style={{ minWidth: 220 }}>
+            <label htmlFor="notation">Written as</label>
+            <select
+              id="notation"
+              value={draftNumbers ? 'numbers' : 'letters'}
+              onChange={(e) => setDraftNumbers(e.target.value === 'numbers')}
+            >
+              <option value="letters">Note letters (C, D, F#, Bb)</option>
+              <option value="numbers">Numbers (kalimba and jianpu tabs)</option>
+            </select>
+          </div>
+          {draftNumbers && (
+            <div style={{ minWidth: 160 }}>
+              <label htmlFor="tonic">Key: 1 means</label>
+              <select
+                id="tonic"
+                value={draftTonic}
+                onChange={(e) => setDraftTonic(Number(e.target.value))}
+              >
+                {Array.from({ length: 12 }, (_, i) => 72 + i).map((midi) => (
+                  <option key={midi} value={midi}>
+                    {noteName(midi)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {draftNumbers && (
+          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+            1 to 7 are the degrees of the major scale. An apostrophe after a number is the octave
+            above (<code>3&apos;</code>), a comma is the octave below (<code>5,</code>), and{' '}
+            <code>#</code> or <code>b</code> before it work as usual. Tabs print those octave marks
+            as dots above and below the number.
+          </p>
+        )}
+
+        {customItems.length > 0 && (
+          <div className="row" style={{ marginBottom: 14, flexWrap: 'wrap' }}>
+            {customItems.map((c) => (
+              <div key={c.id} className="panel" style={{ margin: 0, padding: 12, minWidth: 240 }}>
+                <strong>{c.title}</strong>
+                <div className="muted" style={{ fontSize: 12, margin: '4px 0 8px' }}>
+                  {c.notes.length} notes, {noteName(itemRange(c).low)} to{' '}
+                  {noteName(itemRange(c).high)}
+                  {stats[c.id] ? ` · best ${stats[c.id].bestAccuracy}%` : ''}
+                </div>
+                <div className="row">
+                  <button onClick={() => start(c)}>Practise</button>
+                  <button
+                    className="ghost"
+                    onClick={() =>
+                      player.play(c.notes, c.beats, {
+                        bpm: tempo,
+                        transpose: input.voice.semitones,
+                      })
+                    }
+                  >
+                    Listen
+                  </button>
+                  <button
+                    className="ghost"
+                    onClick={() => saveCustoms(customs.filter((x) => x.id !== c.id))}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="row" style={{ alignItems: 'flex-start' }}>
+          <div style={{ minWidth: 200 }}>
+            <label htmlFor="mel-title">Name</label>
+            <input
+              id="mel-title"
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              placeholder="Cant Take My Eyes Off You"
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <label htmlFor="mel-notes">Notes, one line per phrase</label>
+            <textarea
+              id="mel-notes"
+              value={draftNotes}
+              onChange={(e) => setDraftNotes(e.target.value)}
+              placeholder={'Verse: G4 G4 A4 G4 C5 B4\nChorus: C5 D5 E5 F5 G5'}
+              rows={4}
+              style={{
+                width: '100%',
+                background: 'var(--panel-2)',
+                color: 'var(--text)',
+                border: '1px solid var(--line)',
+                borderRadius: 8,
+                padding: 8,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              }}
+            />
+          </div>
+          <div style={{ paddingTop: 22 }}>
+            <button onClick={addCustom}>Add</button>
+          </div>
+        </div>
+
+        <label className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={draftConcert}
+            onChange={(e) => setDraftConcert(e.target.checked)}
+            style={{ width: 'auto' }}
+          />
+          <span style={{ fontSize: 14 }}>
+            These notes are <strong>concert pitch</strong> (piano, voice or guitar sheet music).
+            Convert them for my {input.voice.label.split('  ')[1] || 'instrument'}.
+          </span>
+        </label>
+        <label className="row" style={{ gap: 8, alignItems: 'center', marginTop: 4 }}>
+          <input
+            type="checkbox"
+            checked={draftFit}
+            onChange={(e) => setDraftFit(e.target.checked)}
+            style={{ width: 'auto' }}
+          />
+          <span style={{ fontSize: 14 }}>
+            Move the whole tune by octaves if needed, so it lands in the range you can play.
+          </span>
+        </label>
+
+        {draftError && <p className="error">{draftError}</p>}
+        {draftNotes.trim() !== '' && !draftError && (
+          <p className="muted" style={{ fontSize: 13 }}>
+            Reads as {draftParsed.notes.length} notes in {draftParsed.phrases.length} phrase
+            {draftParsed.phrases.length === 1 ? '' : 's'}:{' '}
+            {formatMelody(draftParsed.notes.slice(0, 12)) || 'nothing yet'}
+            {draftParsed.notes.length > 12 ? ' ...' : ''}
+            {draftConcert && draftParsed.notes.length > 0 && ' (converted to what you finger)'}
+            {draftParsed.octaves !== 0 &&
+              `, moved ${draftParsed.octaves > 0 ? 'up' : 'down'} ${Math.abs(draftParsed.octaves)} octave${
+                Math.abs(draftParsed.octaves) === 1 ? '' : 's'
+              } to fit`}
+          </p>
+        )}
+      </div>
+    </>
+  )
+}
+
+function ItemList({
+  title,
+  items,
+  stats,
+  onStart,
+  onListen,
+}: {
+  title: string
+  items: PracticeItem[]
+  stats: Record<string, ItemStat>
+  onStart: (item: PracticeItem) => void
+  onListen: (item: PracticeItem) => void
+}) {
+  return (
+    <div className="panel">
+      <h2>{title}</h2>
+      <div className="row" style={{ flexWrap: 'wrap', alignItems: 'stretch' }}>
+        {items.map((item) => {
+          const range = itemRange(item)
+          const stat = stats[item.id]
+          return (
+            <div
+              key={item.id}
+              className="panel"
+              style={{ margin: 0, padding: 14, minWidth: 260, flex: '1 1 260px' }}
+            >
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong>{item.title}</strong>
+                <span className="muted" style={{ fontSize: 12 }}>
+                  {'●'.repeat(item.level)}
+                  {'○'.repeat(3 - item.level)}
+                </span>
+              </div>
+              <p className="muted" style={{ fontSize: 13, margin: '6px 0 8px' }}>
+                {item.about}
+              </p>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                {item.notes.length} notes, {noteName(range.low)} to {noteName(range.high)}
+                {stat
+                  ? ` · played ${stat.timesPlayed}× · best ${stat.bestAccuracy}%`
+                  : ' · not played yet'}
+              </div>
+              <div className="row">
+                <button onClick={() => onStart(item)}>Practise</button>
+                <button className="ghost" onClick={() => onListen(item)}>
+                  Listen
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
