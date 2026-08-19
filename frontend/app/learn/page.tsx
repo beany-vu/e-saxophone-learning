@@ -36,9 +36,18 @@ import type { Lang, StringKey } from '@/lib/i18n'
 import { localiseItem } from '@/lib/curriculum-i18n'
 import { localiseWeek, localisePhase } from '@/lib/course-i18n'
 import { COURSE, PHASES, weekDates, weekFor, weekStatus } from '@/lib/course'
+import {
+  completion,
+  isDone,
+  nextUnfinished,
+  parseDone,
+  serialiseDone,
+  toggleDone,
+} from '@/lib/course-progress'
 
 const CUSTOM_STORAGE_KEY = 'yds120.customMelodies'
 const WEEK_STORAGE_KEY = 'yds120.courseWeek'
+const DONE_STORAGE_KEY = 'yds120.courseDone'
 
 type CustomMelody = { id: string; title: string; notes: number[]; phrases?: Phrase[] }
 
@@ -56,13 +65,33 @@ export default function LearnPage() {
   // one goes badly, and the app has to let you.
   const [workingWeek, setWorkingWeek] = useState(1)
   const [calendarWeek, setCalendarWeek] = useState<number | null>(null)
+  const [weeksDone, setWeeksDone] = useState<number[]>([])
 
   useEffect(() => {
     const onCalendar = weekFor(new Date())?.week ?? null
     setCalendarWeek(onCalendar)
+    const finished = parseDone(localStorage.getItem(DONE_STORAGE_KEY))
+    setWeeksDone(finished)
     const saved = Number(localStorage.getItem(WEEK_STORAGE_KEY))
-    setWorkingWeek(saved >= 1 && saved <= COURSE.length ? saved : (onCalendar ?? 1))
+    if (saved >= 1 && saved <= COURSE.length) setWorkingWeek(saved)
+    else if (finished.length) setWorkingWeek(nextUnfinished(finished, COURSE.length))
+    else setWorkingWeek(onCalendar ?? 1)
   }, [])
+
+  /** Ticking a week moves you on to the next one still outstanding. */
+  const toggleWeekDone = useCallback(
+    (weekNumber: number) => {
+      const updated = toggleDone(weeksDone, weekNumber)
+      setWeeksDone(updated)
+      localStorage.setItem(DONE_STORAGE_KEY, serialiseDone(updated))
+      if (isDone(updated, weekNumber)) {
+        const next = nextUnfinished(updated, COURSE.length)
+        setWorkingWeek(next)
+        localStorage.setItem(WEEK_STORAGE_KEY, String(next))
+      }
+    },
+    [weeksDone],
+  )
 
   const goToWeek = useCallback((next: number) => {
     const clamped = Math.min(COURSE.length, Math.max(1, next))
@@ -74,6 +103,8 @@ export default function LearnPage() {
   const rawPhase = PHASES.find((p) => p.weeks.includes(week.week))
   const phase = rawPhase ? localisePhase(rawPhase, lang) : undefined
   const status = calendarWeek === null ? null : weekStatus(week.week, calendarWeek)
+  const progress = completion(weeksDone, COURSE.length)
+  const weekDone = isDone(weeksDone, week.week)
 
   // ---- Fingering explorer -------------------------------------------------
   const [lookupNote, setLookupNote] = useState(73) // open C#5, the no-keys note
@@ -360,7 +391,8 @@ export default function LearnPage() {
             </h2>
             <span className="muted" style={{ fontSize: 13 }}>
               {weekDates(week.week).start} to {weekDates(week.week).end}
-              {phase ? ` · ${phase.title}` : ''}
+              {phase ? ` · ${phase.title}` : ''} ·{' '}
+              {t('course.completion', { done: progress.done, total: progress.total })}
             </span>
           </div>
 
@@ -378,6 +410,14 @@ export default function LearnPage() {
               disabled={week.week === COURSE.length}
             >
               {t('common.next')}
+            </button>
+            <button
+              className={weekDone ? 'ghost' : ''}
+              onClick={() => toggleWeekDone(week.week)}
+            >
+              {weekDone
+                ? `✓ ${t('course.markNotDone', { week: week.week })} · ${t('course.undo')}`
+                : t('course.markDone', { week: week.week })}
             </button>
             {calendarWeek !== null && (
               <>
@@ -403,6 +443,10 @@ export default function LearnPage() {
                 {t('course.outsideDates')}
               </span>
             )}
+          </div>
+
+          <div className="meter" style={{ margin: '0 0 12px' }}>
+            <div style={{ width: `${progress.percent}%` }} />
           </div>
 
           <p style={{ marginBottom: 8 }}>{week.focus}</p>
@@ -450,12 +494,20 @@ export default function LearnPage() {
                           key={n}
                           style={{
                             color: n === week.week ? 'var(--accent)' : undefined,
-                            fontWeight: n === week.week ? 600 : undefined,
+                            fontWeight: n === week.week ? 700 : undefined,
                             cursor: 'pointer',
+                            opacity: isDone(weeksDone, n) && n !== week.week ? 0.65 : 1,
                           }}
                           onClick={() => goToWeek(n)}
                         >
-                          Week {n} ({weekDates(n).start}): {w.title}. {w.goal}
+                          <span
+                            style={{ color: isDone(weeksDone, n) ? 'var(--good)' : 'var(--muted)' }}
+                          >
+                            {isDone(weeksDone, n) ? '✓' : '○'}
+                          </span>{' '}
+                          {t('course.weekOf', { week: n, total: COURSE.length })} (
+                          {weekDates(n).start}): {w.title}. {w.goal}
+                          {n === week.week ? ` · ${t('course.currentWeek')}` : ''}
                         </li>
                       )
                     })}

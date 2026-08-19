@@ -254,6 +254,13 @@ const en = {
   'login.needAccountShort': 'Need an account?',
   'login.haveOneShort': 'Already have one?',
   'learn.melodyNamePlaceholder': 'The song you want to play',
+  'course.markDone': 'Mark week {week} done',
+  'course.markNotDone': 'Week {week} done',
+  'course.undo': 'Undo',
+  'course.completion': '{done} of {total} weeks done',
+  'course.currentWeek': 'current week',
+  'course.doneLabel': 'done',
+  'course.continueAt': 'Continue at week {week}',
 } as const
 
 export type StringKey = keyof typeof en
@@ -494,6 +501,13 @@ const fr: Record<StringKey, string> = {
   'login.needAccountShort': 'Pas de compte ?',
   'login.haveOneShort': 'Deja un compte ?',
   'learn.melodyNamePlaceholder': 'Le morceau que vous voulez jouer',
+  'course.markDone': 'Marquer la semaine {week} comme faite',
+  'course.markNotDone': 'Semaine {week} faite',
+  'course.undo': 'Annuler',
+  'course.completion': '{done} semaines sur {total} faites',
+  'course.currentWeek': 'semaine en cours',
+  'course.doneLabel': 'faite',
+  'course.continueAt': 'Reprendre a la semaine {week}',
 }
 
 export const STRINGS: Record<Lang, Record<string, string>> = { en, fr }

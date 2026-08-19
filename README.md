@@ -171,7 +171,10 @@ Custom melodies are stored in the browser, not on the server.
 
 **The course.** A dated 20 week plan, 19 August to 31 December 2026, shown a week
 at a time: what this week is about, a goal you can check, what usually goes wrong,
-and buttons straight to that week's exercises. The whole plan is one click away.
+and buttons straight to that week's exercises. Mark a week done and it carries a
+check in the plan, the current week stays highlighted, and a bar tracks how much of
+the course is behind you. Completion is explicit rather than derived from the date,
+because the plan tells you to repeat a week when one goes badly.
 
 **Reading music.** Every item can be shown on a treble staff, with the current note
 highlighted as you play or as the demo runs, and the words under the notes. Notation
