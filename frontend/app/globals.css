@@ -10,6 +10,15 @@
   --good: #4cd08a;
   --bad: #ff6b6b;
   --warn: #e0b341;
+
+  /* The scrollbar is permanently on screen, so it has to be visible against
+     the page rather than blending into it. Measured against the background:
+     the thumb is 4.5:1 and the hover state 10.7:1, where the accessibility
+     floor for a control is 3:1. An earlier version used --line at 1.41:1,
+     which is technically a scrollbar and practically not there. */
+  --scroll-track: #171a21;
+  --scroll-thumb: #727c92;
+  --scroll-thumb-hover: #ffb454;
 }
 
 * { box-sizing: border-box; }
@@ -24,21 +33,26 @@ html {
   scrollbar-gutter: stable;
 }
 
-/* A scrollbar that matches the panels rather than the browser default, since
-   it is now permanently on screen. */
+/* A scrollbar you can actually see, since it is permanently on screen. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--line) var(--bg);
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
 }
 
-::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar { width: 14px; height: 14px; }
+::-webkit-scrollbar-track {
+  background: var(--scroll-track);
+  border-left: 1px solid var(--line);
+}
 ::-webkit-scrollbar-thumb {
-  background: var(--line);
-  border: 3px solid var(--bg);
+  background: var(--scroll-thumb);
+  /* A 2px border rather than 3: a thicker inset leaves the thumb so thin that
+     the contrast stops mattering. */
+  border: 2px solid var(--scroll-track);
   border-radius: 8px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
+::-webkit-scrollbar-corner { background: var(--scroll-track); }
 
 body {
   margin: 0;
