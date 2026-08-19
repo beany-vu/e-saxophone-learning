@@ -29,6 +29,11 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       WEB_PUBLIC_URL: ${{ vars.WEB_PUBLIC_URL }}
+      # A secret rather than a variable. It is not a credential, but this repo
+      # is public: secrets are masked in the Actions logs anyone can read, and
+      # it keeps one person's address out of a codebase meant for anyone to
+      # run. Optional: unset means the stack comes up with no admin at all.
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
       COMPOSE_HTTP_TIMEOUT: 300
       DOCKER_CLIENT_TIMEOUT: 300
 

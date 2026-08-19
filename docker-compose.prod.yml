@@ -39,6 +39,11 @@ services:
       # Everything is served over HTTPS through the tunnel, so the session
       # cookie can be Secure.
       COOKIE_SECURE: "true"
+      # Who gets the admin flag on this server. Applied at start-up if that
+      # account exists, and at signup if it does not yet, so it works whichever
+      # way round the deploy and the signup happen. Optional: without it the
+      # stack runs with no admin at all.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
     ports:
       # Host-local only, for poking at it from the server itself. The public
       # route is the tunnel, which does not need a published port.

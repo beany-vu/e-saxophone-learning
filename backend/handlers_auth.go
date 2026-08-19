@@ -25,6 +25,9 @@ type userResponse struct {
 	CourseStart string `json:"courseStart"`
 	TargetEnd   string `json:"courseTargetEnd"`
 	WeeksDone   []int  `json:"courseWeeksDone"`
+	// Whether this account may manage other accounts. The frontend uses it to
+	// decide whether to offer the Users page at all.
+	IsAdmin bool `json:"isAdmin"`
 }
 
 // handleSignup creates an account, then logs the user in by setting the cookie.
@@ -50,13 +53,18 @@ func (s *server) handleSignup(w http.ResponseWriter, r *http.Request) {
 		displayName = strings.Split(req.Email, "@")[0]
 	}
 
+	// The bootstrap admin usually signs up after the deploy, by which time
+	// start-up has already been and gone. Catch the address here too, or the
+	// account it was set for would come out as an ordinary learner.
+	admin := s.adminEmail != "" && strings.TrimSpace(strings.ToLower(s.adminEmail)) == req.Email
+
 	var u userResponse
 	err = s.db.QueryRow(r.Context(),
-		`INSERT INTO users (email, password_hash, display_name)
-		 VALUES ($1, $2, $3)
-		 RETURNING id, email, display_name`,
-		req.Email, hash, displayName,
-	).Scan(&u.ID, &u.Email, &u.DisplayName)
+		`INSERT INTO users (email, password_hash, display_name, is_admin)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, email, display_name, is_admin`,
+		req.Email, hash, displayName, admin,
+	).Scan(&u.ID, &u.Email, &u.DisplayName, &u.IsAdmin)
 	if err != nil {
 		if isUniqueViolation(err) {
 			writeError(w, http.StatusConflict, "an account with that email already exists")
@@ -87,9 +95,9 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var id, hash string
 	var u userResponse
 	err := s.db.QueryRow(r.Context(),
-		`SELECT id, password_hash, email, display_name FROM users WHERE email = $1`,
+		`SELECT id, password_hash, email, display_name, is_admin FROM users WHERE email = $1`,
 		req.Email,
-	).Scan(&id, &hash, &u.Email, &u.DisplayName)
+	).Scan(&id, &hash, &u.Email, &u.DisplayName, &u.IsAdmin)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusUnauthorized, "invalid email or password")
@@ -126,9 +134,9 @@ func (s *server) handleMe(w http.ResponseWriter, r *http.Request) {
 	var start, target *time.Time
 	u.WeeksDone = []int{}
 	err := s.db.QueryRow(r.Context(),
-		`SELECT id, email, display_name, course_start, course_target_end, course_weeks_done
+		`SELECT id, email, display_name, course_start, course_target_end, course_weeks_done, is_admin
 		 FROM users WHERE id = $1`, uid,
-	).Scan(&u.ID, &u.Email, &u.DisplayName, &start, &target, &u.WeeksDone)
+	).Scan(&u.ID, &u.Email, &u.DisplayName, &start, &target, &u.WeeksDone, &u.IsAdmin)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "session user not found")
 		return
