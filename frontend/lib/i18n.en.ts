@@ -294,6 +294,8 @@ export const en = {
   'compose.keyboardRange': 'The keys you can write with are the ones the instrument can play.',
   'compose.fullRange': 'The whole instrument: {low} to {high} written, sounding {lowSounding} to {highSounding}. Just under three octaves, wider than an acoustic alto at both ends.',
   'compose.noFingering': 'These notes are outside the fingering chart, so the trainer will not show you a grip for them: {notes}. The instrument plays them; the chart in the manual has them and I have not transcribed those diagrams yet.',
+  'common.showFingerings': 'Show fingerings',
+  'common.noFingering': 'no grip',
 } as const
 
 export type StringKey = keyof typeof en

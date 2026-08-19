@@ -281,4 +281,6 @@ export const vi: Record<StringKey, string> = {
   'compose.keyboardRange': 'Các phím bạn dùng để viết là những phím nhạc cụ có thể chơi.',
   'compose.fullRange': 'Toàn bộ nhạc cụ: từ {low} đến {high} theo cao độ ghi, vang lên từ {lowSounding} đến {highSounding}. Gần ba quãng tám, rộng hơn kèn alto thật ở cả hai đầu.',
   'compose.noFingering': 'Những nốt này nằm ngoài bảng thế bấm, nên bộ luyện tập sẽ không hiện thế bấm cho chúng: {notes}. Nhạc cụ chơi được chúng; bảng trong sách hướng dẫn có, nhưng tôi chưa chép lại các sơ đồ đó.',
+  'common.showFingerings': 'Hiện thế bấm',
+  'common.noFingering': 'chưa có thế bấm',
 }

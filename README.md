@@ -156,7 +156,9 @@ high F#, wider than an acoustic alto at both ends and just under three octaves. 
 time signature (2/4, 3/4, 4/4) and a note length, tick the dot to add half
 again, and the bars work themselves out. Bar lines appear on the staff, each
 note is heard as you place it, and a bar holding more than it should is
-flagged rather than silently rearranged. Save it and it joins your melodies.
+flagged rather than silently rearranged. Save it and it joins your melodies. Every note carries a **small fingering
+diagram underneath**, so a tune reads as a row of grips rather than a row of
+names. The trainer has the same, behind a toggle.
 
 **Your own melodies.** Type a tune as note names, **one line per phrase**, with an
 optional label:

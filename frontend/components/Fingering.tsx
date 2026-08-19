@@ -42,12 +42,19 @@ export default function Fingering({
   keys,
   onToggle,
   size = 220,
+  compact = false,
 }: {
   /** Keys currently pressed. */
   keys: SaxKeyId[]
   /** When given, keys become clickable and this fires with the one clicked. */
   onToggle?: (key: SaxKeyId) => void
   size?: number
+  /**
+   * Drops the key labels, for the thumbnail under each note in a tune. At that
+   * size the text is unreadable anyway, and the pattern of filled circles is
+   * what you actually recognise.
+   */
+  compact?: boolean
 }) {
   const pressed = new Set(keys)
   const interactive = Boolean(onToggle)
@@ -88,18 +95,20 @@ export default function Fingering({
               r={k.r}
               fill={on ? 'var(--accent)' : 'transparent'}
               stroke={on ? 'var(--accent)' : 'var(--line)'}
-              strokeWidth="2"
+              strokeWidth={compact ? 3 : 2}
             />
-            <text
-              x={k.x}
-              y={k.y + 4}
-              textAnchor="middle"
-              fontSize={k.r > 12 ? 12 : 8}
-              fill={on ? '#1a1205' : 'var(--muted)'}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >
-              {k.text}
-            </text>
+            {!compact && (
+              <text
+                x={k.x}
+                y={k.y + 4}
+                textAnchor="middle"
+                fontSize={k.r > 12 ? 12 : 8}
+                fill={on ? '#1a1205' : 'var(--muted)'}
+                style={{ pointerEvents: 'none', userSelect: 'none' }}
+              >
+                {k.text}
+              </text>
+            )}
           </g>
         )
       })}

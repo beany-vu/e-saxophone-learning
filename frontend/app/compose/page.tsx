@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Piano from '@/components/Piano'
 import Staff from '@/components/Staff'
+import Fingering from '@/components/Fingering'
 import { useI18n } from '@/lib/i18n-context'
 import { useInputContext } from '@/lib/input-context'
 import { useMelodyPlayer } from '@/hooks/useMelodyPlayer'
@@ -17,7 +18,13 @@ import {
   totalBeats,
   type ComposedNote,
 } from '@/lib/compose'
-import { FINGERING_HIGH, FINGERING_LOW, INSTRUMENT_HIGH, INSTRUMENT_LOW } from '@/lib/fingerings'
+import {
+  FINGERING_HIGH,
+  FINGERING_LOW,
+  INSTRUMENT_HIGH,
+  INSTRUMENT_LOW,
+  fingeringFor,
+} from '@/lib/fingerings'
 import { toConcert } from '@/lib/notes'
 import type { StringKey } from '@/lib/i18n'
 
@@ -45,6 +52,7 @@ export default function ComposePage() {
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [playAsYouGo, setPlayAsYouGo] = useState(true)
+  const [showGrips, setShowGrips] = useState(true)
 
   const beats = dot ? dotted(length) : length
   const { bars, overfull } = useMemo(() => toBars(notes, beatsPerBar), [notes, beatsPerBar])
@@ -173,13 +181,26 @@ export default function ComposePage() {
               <Staff notes={notes.map((x) => x.midi)} current={player.index} barlines={barlines} />
             </div>
 
-            <div className="seq" style={{ marginTop: 10 }}>
-              {notes.map((note, i) => (
-                <div key={i} className={`step${player.index === i ? ' current' : ''}`}>
-                  <div>{n(note.midi)}</div>
-                  <div style={{ fontSize: 11, opacity: 0.75 }}>{note.beats}</div>
-                </div>
-              ))}
+            <div className="seq" style={{ marginTop: 10, alignItems: 'flex-start' }}>
+              {notes.map((note, i) => {
+                const grip = fingeringFor(note.midi)
+                return (
+                  <div key={i} className={`step${player.index === i ? ' current' : ''}`}>
+                    <div>{n(note.midi)}</div>
+                    <div style={{ fontSize: 11, opacity: 0.75 }}>{note.beats}</div>
+                    {showGrips &&
+                      (grip ? (
+                        <div style={{ marginTop: 4 }}>
+                          <Fingering keys={grip.keys} size={34} compact />
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4 }}>
+                          {t('common.noFingering')}
+                        </div>
+                      ))}
+                  </div>
+                )
+              })}
             </div>
 
             <p className="muted" style={{ fontSize: 13, marginTop: 10, marginBottom: 0 }}>
@@ -224,6 +245,15 @@ export default function ComposePage() {
               style={{ width: 'auto' }}
             />
             <span style={{ fontSize: 13 }}>{t('compose.playAsYouGo')}</span>
+          </label>
+          <label className="row" style={{ gap: 6, alignItems: 'center', margin: 0 }}>
+            <input
+              type="checkbox"
+              checked={showGrips}
+              onChange={(e) => setShowGrips(e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            <span style={{ fontSize: 13 }}>{t('common.showFingerings')}</span>
           </label>
         </div>
       </div>

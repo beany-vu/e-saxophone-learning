@@ -66,6 +66,7 @@ export default function LearnPage() {
   const { user } = useAuth()
   const [tempo, setTempo] = useState(90)
   const [showStaff, setShowStaff] = useState(true)
+  const [showGrips, setShowGrips] = useState(false)
 
   // Which week you are working on. Starts at 1 so the server and the first
   // client render agree, then the effect moves it to where you actually are.
@@ -740,7 +741,7 @@ export default function LearnPage() {
                 </div>
               )}
 
-              <div className="seq">
+              <div className="seq" style={showGrips ? { alignItems: 'flex-start' } : undefined}>
                 {segment!.notes.map((midi, i) => (
                   <div
                     key={i}
@@ -752,6 +753,16 @@ export default function LearnPage() {
                     {segment!.lyrics && (
                       <div style={{ fontSize: 11, opacity: 0.75 }}>{segment!.lyrics[i]}</div>
                     )}
+                    {showGrips &&
+                      (fingeringFor(midi) ? (
+                        <div style={{ marginTop: 4 }}>
+                          <Fingering keys={fingeringFor(midi)!.keys} size={34} compact />
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4 }}>
+                          {t('common.noFingering')}
+                        </div>
+                      ))}
                   </div>
                 ))}
               </div>
@@ -860,6 +871,15 @@ export default function LearnPage() {
                     style={{ width: 'auto' }}
                   />
                   <span style={{ fontSize: 13 }}>{t('learn.showMusic')}</span>
+                </label>
+                <label className="row" style={{ gap: 6, alignItems: 'center', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={showGrips}
+                    onChange={(e) => setShowGrips(e.target.checked)}
+                    style={{ width: 'auto' }}
+                  />
+                  <span style={{ fontSize: 13 }}>{t('common.showFingerings')}</span>
                 </label>
                 <label htmlFor="tempo" className="label" style={{ margin: 0 }}>
                   {tempo} bpm

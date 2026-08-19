@@ -33,3 +33,22 @@ describe('Fingering', () => {
     expect(container.querySelectorAll('g[data-pressed="true"]')).toHaveLength(0)
   })
 })
+
+describe('the compact fingering under a note', () => {
+  it('drops the labels, which are unreadable at thumbnail size', () => {
+    const { container } = render(<Fingering keys={fingeringFor(67)!.keys} size={40} compact />)
+    expect(container.querySelectorAll('text')).toHaveLength(0)
+  })
+
+  it('still draws every key, so the shape is the same one you learned', () => {
+    const full = render(<Fingering keys={fingeringFor(67)!.keys} />).container
+    const small = render(<Fingering keys={fingeringFor(67)!.keys} compact />).container
+    expect(small.querySelectorAll('circle')).toHaveLength(full.querySelectorAll('circle').length)
+    expect(small.querySelectorAll('g[data-pressed="true"]')).toHaveLength(3)
+  })
+
+  it('keeps its accessible name, since the labels are gone', () => {
+    const { container } = render(<Fingering keys={fingeringFor(67)!.keys} compact />)
+    expect(container.querySelector('svg')?.getAttribute('aria-label')).toContain('1')
+  })
+})
