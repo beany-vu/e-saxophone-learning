@@ -4,6 +4,7 @@ import { AuthProvider } from '@/lib/auth-context'
 import { InputProvider } from '@/lib/input-context'
 import { I18nProvider } from '@/lib/i18n-context'
 import Nav from '@/components/Nav'
+import Analytics from '@/components/Analytics'
 
 export const metadata: Metadata = {
   title: 'e-Saxophone Practice',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // are still reported.
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <Analytics />
         <I18nProvider>
           <AuthProvider>
             <InputProvider>

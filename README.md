@@ -356,10 +356,11 @@ Read from `.env` by compose. See `.env.example`.
 | `CORS_ORIGIN` | http://localhost:3000 | only used for direct calls to port 8080 |
 | `COOKIE_SECURE` | false | production sets `true` so the session cookie is HTTPS-only |
 | `ADMIN_EMAIL` | empty | the account that may manage other accounts, see [Users](#users) |
+| `GA_MEASUREMENT_ID` | empty | Google Analytics 4 id (`G-XXXXXXXXXX`). Empty means no analytics tag is served at all |
 
-Nothing personal is committed here. `ADMIN_EMAIL` is empty in this repository
-and in every default: a fresh clone has no admin until whoever runs it says
-otherwise.
+Nothing personal is committed here. Both of the last two are empty in this
+repository and in every default: a fresh clone has no admin and sends no
+analytics until whoever runs it says otherwise.
 
 ## Users
 
@@ -415,8 +416,12 @@ browser -> Cloudflare edge -> tunnel (outbound) -> web:3000 -> api:8080 -> db
 
 | Hostname | Service |
 |---|---|
-| `e-saxophone.body-and-binary.net` | `web:3000`, the Next.js app |
-| `e-saxophone-api.body-and-binary.net` | `api:8080`, the Go API directly |
+| `e-saxophone.example.com` | `web:3000`, the Next.js app |
+| `e-saxophone-api.example.com` | `api:8080`, the Go API directly |
+
+(Two hostnames of your own. Nothing in this repository names a domain: the web
+origin comes from the `WEB_PUBLIC_URL` setting and the routes themselves live
+in the Cloudflare dashboard.)
 
 The browser normally only ever talks to the first one: Next rewrites `/api/*` to
 the Go service over the compose network, so the session cookie is same-origin.
@@ -443,9 +448,12 @@ not in this repo.
 defaults to `yds` / `yds120`. `WEB_PUBLIC_URL` is an optional repository
 *variable* that sets the CORS origin for direct calls to the API hostname.
 
-`ADMIN_EMAIL` is an optional secret. It is not a credential, but this
-repository is public, and secrets are masked in the Actions logs anyone can
-read. Leave it unset and the server simply has no admin.
+`ADMIN_EMAIL` and `GA_MEASUREMENT_ID` are optional secrets. Neither is a
+credential, but this repository is public, and secrets are masked in the
+Actions logs anyone can read. Leave either one unset and that feature is simply
+absent: no admin account, no analytics tag. (A measurement id does appear in
+the page source of the deployed site, so a secret keeps it out of the code and
+the logs, not out of a visitor's view-source.)
 
 **3. Register the runner.** Each repo on this box gets its own runner and its
 own systemd service. Grab a registration token from
