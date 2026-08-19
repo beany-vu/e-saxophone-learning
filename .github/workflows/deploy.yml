@@ -11,6 +11,10 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+# Only what the release step needs. Everything else about this workflow reads.
+permissions:
+  contents: write
+
 jobs:
   # One job, entirely on the self-hosted runner. GitHub-hosted runners are not
   # available on this account, so nothing here may use `runs-on: ubuntu-latest`.
@@ -53,6 +57,25 @@ jobs:
           exit 1
 
       - uses: actions/checkout@v4
+        with:
+          # The whole history and every tag, so the release notes can say what
+          # changed since the last deploy rather than repeating one commit.
+          fetch-depth: 0
+
+      # This account has no GitHub-hosted runners, so a job that asks for one
+      # does not fail, it never starts, and the deploy silently does not happen.
+      # Cheaper to catch here than to notice a week later that nothing shipped.
+      - name: Every job must run on the self-hosted runner
+        shell: bash
+        run: |
+          # Anchored so it matches the key and not a comment that mentions it.
+          bad=$(grep -rnE "^[[:space:]]*runs-on:" .github/workflows/ | grep -v "self-hosted" || true)
+          if [ -n "$bad" ]; then
+            echo "These jobs ask for a runner this account does not have:" >&2
+            echo "$bad" >&2
+            exit 1
+          fi
+          echo "all jobs run on self-hosted"
 
       - name: Validate secrets
         shell: bash
@@ -144,6 +167,64 @@ jobs:
           }
           wait_for http://127.0.0.1:8090/health API api
           wait_for http://127.0.0.1:3010/ web web
+
+      - name: What is new in this release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          previous=$(git describe --tags --abbrev=0 --match 'deploy-*' 2>/dev/null || true)
+          if [ -n "$previous" ]; then
+            range="$previous..HEAD"
+            since="since $previous"
+          else
+            # First release: summarise the recent past rather than the whole
+            # history, which nobody reads.
+            range="-20"
+            since="the last 20 commits"
+          fi
+
+          notes=$(git log --no-merges --pretty=format:'- %s' $range)
+          [ -n "$notes" ] || notes="- No new commits, redeployed $(git rev-parse --short HEAD)"
+
+          tag="deploy-$(date +%Y-%m-%d)-${GITHUB_RUN_NUMBER}"
+          {
+            echo "## Deployed: $tag"
+            echo
+            echo "What changed, $since:"
+            echo
+            echo "$notes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # A release as well as a summary: a job summary is buried in a run
+          # nobody opens, a release is a page with a URL and an RSS feed.
+          python3 - "$tag" "$notes" "$GITHUB_SHA" <<'PYTHON' > /tmp/release-body.json
+          import json, sys
+          tag, notes, sha = sys.argv[1], sys.argv[2], sys.argv[3]
+          print(json.dumps({
+              "tag_name": tag,
+              # The commit that was actually deployed, which is not always the
+              # head of main by the time this step runs.
+              "target_commitish": sha,
+              "name": tag.replace("deploy-", "Deployed "),
+              "body": f"What changed:\n\n{notes}\n",
+              "make_latest": "true",
+          }))
+          PYTHON
+
+          code=$(curl -sS -o /tmp/release-out.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
+            -d @/tmp/release-body.json)
+          if [ "$code" = "201" ]; then
+            echo "release $tag published"
+          else
+            # Not worth failing a healthy deploy over: the stack is already
+            # serving, and the summary above still says what shipped.
+            echo "could not publish the release (HTTP $code):" >&2
+            cat /tmp/release-out.json >&2
+          fi
 
       - name: Show status
         if: always()
