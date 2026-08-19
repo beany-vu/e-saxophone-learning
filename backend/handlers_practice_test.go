@@ -137,6 +137,36 @@ func TestPracticeSessions(t *testing.T) {
 		}
 	})
 
+	// Drilling the three notes you keep missing is practice, but it is not
+	// playing the piece. It counts in the totals and it must not be able to
+	// post a better score for a song than the song was ever played at.
+	t.Run("keeps drill runs out of the per item best score, but in the totals", func(t *testing.T) {
+		uid := testUser(t, pool)
+		postSession(t, s, uid, createSessionRequest{
+			Source: "song", Item: "ode-to-joy", NotesPlayed: 10, CorrectNotes: 6, WrongNotes: 4,
+		})
+		postSession(t, s, uid, createSessionRequest{
+			Source: "song-drill", Item: "ode-to-joy", NotesPlayed: 4, CorrectNotes: 4,
+		})
+
+		sum := getSummary(t, s, uid)
+		if sum.TotalSessions != 2 {
+			t.Errorf("total sessions = %d, want both runs counted", sum.TotalSessions)
+		}
+		var stat itemStat
+		for _, st := range sum.ItemStats {
+			if st.Item == "ode-to-joy" {
+				stat = st
+			}
+		}
+		if stat.TimesPlayed != 1 {
+			t.Errorf("times played = %d, want only the real run", stat.TimesPlayed)
+		}
+		if stat.BestAccuracy != 60 {
+			t.Errorf("best accuracy = %d, want 60 from the real run, not 100 from the drill", stat.BestAccuracy)
+		}
+	})
+
 	t.Run("adds to the running per-note total rather than replacing it", func(t *testing.T) {
 		uid := testUser(t, pool)
 		postSession(t, s, uid, createSessionRequest{NotesPlayed: 3, NoteCounts: map[string]int{"72": 3}})
