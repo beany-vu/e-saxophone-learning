@@ -1,0 +1,73 @@
+# Dependency updates, grouped so that routine housekeeping stays routine.
+#
+# The rule that matters: **only minor and patch updates are grouped.** A major
+# version is opened as a pull request of its own, so it arrives named after the
+# thing it upgrades rather than hidden inside "bump the npm group across 1
+# directory with 5 updates".
+#
+# That grouping cost three broken deploys on 19 August 2026. One group update
+# carried Next 15 to 16, vitest 2 to 4 and plugin-react 4 to 6, and the vite 8
+# those dragged in wanted a newer @types/node than the project pinned, so
+# `npm ci` died before a single test could run. A second raised go.mod to Go
+# 1.25 while three containers still pinned 1.23, and Go refuses to build at all
+# below the version in go.mod.
+#
+# Neither failure could be caught by tests, because both broke the step before
+# the tests. A major that arrives on its own is at least read before it is
+# merged.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend:
+        patterns: ['*']
+        # Majors deliberately absent: they get their own pull request.
+        update-types: ['minor', 'patch']
+    commit-message:
+      prefix: 'Bump'
+
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    commit-message:
+      prefix: 'Bump'
+
+  # The base images, which is where the Go and Node toolchains actually live.
+  # go.mod says which Go the code needs; these say which Go is available, and
+  # the pair have to be raised together.
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      images:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    commit-message:
+      prefix: 'Bump'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    commit-message:
+      prefix: 'Bump'

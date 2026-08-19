@@ -23,6 +23,10 @@ Two ways in, switchable on the monitor page:
 - **Progress** lifetime totals, recent sessions, and a note coverage heatmap
   showing which notes you avoid
 
+There is a **[wiki](https://github.com/beany-vu/e-saxophone-learning/wiki)** as well. This file is
+the project: what it is, how it is built, how to run it. The wiki is the manual: connecting the
+instrument, the twenty week course, practising, and what to do when it hears nothing.
+
 ## Requirements
 
 | | |
@@ -142,7 +146,7 @@ the note that would come out, including when the combination is not a note at al
 Playing a note on a connected instrument fills the chart in as you go. It covers
 written Bb3 to C#6; palm key notes above that are not included.
 
-**Warm-ups and songs.** Seventeen exercises, from five notes and long tones through
+**Warm-ups and songs.** Sixteen warm-ups, from five notes and long tones through
 scales in C, F, G and D, arpeggios, reading drills, rhythm, tonguing, breath control,
 awkward finger joins and dynamics, plus six traditional melodies. Each one shows the next note, its fingering, a running
 accuracy, and tells you when you played the right note in the wrong octave. Songs
@@ -265,7 +269,7 @@ backend/                Go API, one flat "package main"
   cmd/mcp/main.go       the MCP server an AI assistant talks to
   *_test.go             tests live next to the code they cover
 
-frontend/               Next.js 15, App Router, TypeScript
+frontend/               Next.js 16, App Router, TypeScript
   app/                  one folder per route, page.tsx is the page
   components/           Nav, Piano, Fingering, Staff
   lib/input-context.tsx one shared input for the whole app (provider in the layout)
