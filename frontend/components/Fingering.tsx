@@ -73,7 +73,15 @@ export default function Fingering({
       style={{ maxWidth: '100%' }}
     >
       {/* The body, drawn behind everything else. */}
-      <rect x="70" y="40" width="40" height="310" rx="20" fill="var(--panel-2)" />
+      <rect
+        x="70"
+        y="40"
+        width="40"
+        height="310"
+        rx="20"
+        fill="var(--panel-2)"
+        stroke="var(--line)"
+      />
 
       {LAYOUT.map((k) => {
         const on = pressed.has(k.id)
@@ -93,9 +101,12 @@ export default function Fingering({
               cx={k.x}
               cy={k.y}
               r={k.r}
-              fill={on ? 'var(--accent)' : 'transparent'}
-              stroke={on ? 'var(--accent)' : 'var(--line)'}
-              strokeWidth={compact ? 3 : 2}
+              fill={on ? 'var(--accent)' : 'var(--key-face)'}
+              stroke={on ? 'var(--accent)' : 'var(--key-ring)'}
+              // The thumbnail shrinks this 160-wide drawing to 34px, so a
+              // ring has to be drawn about seven units thick to come out as a
+              // visible one and a half pixels rather than a grey hair.
+              strokeWidth={compact ? 7 : 2}
             />
             {!compact && (
               <text

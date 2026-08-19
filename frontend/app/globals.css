@@ -6,6 +6,11 @@
   --text: #e7e9ee;
   --muted: #9aa3b2;
   --accent: #ffb454;
+  /* A key nobody is holding down. It sits on the near-black page, so it needs
+     a face of its own and an outline well clear of --line, or the grip under a
+     note reads as an empty black square. */
+  --key-face: #2b313c;
+  --key-ring: #8b95a8;
   --accent-2: #4ea8ff;
   --good: #4cd08a;
   --bad: #ff6b6b;
