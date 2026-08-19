@@ -12,65 +12,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Runs on GitHub's runners so the deploy box stays clean and the production
-  # database is never anywhere near a test. Delete this job (and the `needs:`
-  # below) to deploy without gating on tests.
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: yds
-          POSTGRES_PASSWORD: yds_test_pw
-          POSTGRES_DB: yds120
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U yds -d yds120"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-          cache-dependency-path: backend/go.sum
-
-      - name: Backend tests
-        working-directory: backend
-        env:
-          # Without this the database-backed tests skip themselves silently.
-          DATABASE_URL: postgres://yds:yds_test_pw@localhost:5432/yds120?sslmode=disable
-          JWT_SECRET: test-secret
-        run: go test ./... -count=1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Frontend tests
-        working-directory: frontend
-        run: |
-          npm ci
-          npm test
-
-      - name: Frontend production build
-        working-directory: frontend
-        # Catches type and build errors here rather than on the deploy box,
-        # where a failed build means the swap step is where you find out.
-        run: npm run build
-
+  # One job, entirely on the self-hosted runner. GitHub-hosted runners are not
+  # available on this account, so nothing here may use `runs-on: ubuntu-latest`.
+  # The tests run first and in throwaway containers, so a red test stops the
+  # deploy before anything production-facing is touched.
   deploy:
-    needs: test
     runs-on: self-hosted
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     env:
       COMPOSE_FILE: docker-compose.prod.yml
@@ -113,6 +61,49 @@ jobs:
           done
           [ $missing -eq 0 ] || { echo "Aborting - set the missing repository secrets." >&2; exit 1; }
 
+      - name: Backend tests
+        shell: bash
+        run: |
+          # A throwaway database on its own network, named per run so a stale
+          # container from a cancelled run can never be reused. The production
+          # stack is untouched.
+          NET="esax-test-${GITHUB_RUN_ID}"
+          DB="esax-test-db-${GITHUB_RUN_ID}"
+          cleanup() {
+            docker rm -f "$DB" > /dev/null 2>&1 || true
+            docker network rm "$NET" > /dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker network create "$NET" > /dev/null
+          docker run -d --name "$DB" --network "$NET" \
+            -e POSTGRES_USER=yds -e POSTGRES_PASSWORD=test_pw -e POSTGRES_DB=yds120 \
+            --health-cmd "pg_isready -U yds -d yds120" \
+            --health-interval 5s --health-timeout 5s --health-retries 12 \
+            postgres:16-alpine > /dev/null
+
+          for i in $(seq 1 30); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' "$DB")" = "healthy" ] && break
+            echo "  waiting for the test database... ($i/30)"
+            sleep 2
+          done
+
+          # The build stage already carries the source and the module cache,
+          # so the tests need no host mount and leave nothing in the workspace.
+          docker build -f backend/Dockerfile --target build -t esax-api-test backend
+          docker run --rm --network "$NET" -w /src \
+            -e DATABASE_URL="postgres://yds:test_pw@${DB}:5432/yds120?sslmode=disable" \
+            -e JWT_SECRET=test-secret \
+            esax-api-test go test ./... -count=1
+
+      - name: Frontend tests
+        shell: bash
+        run: |
+          # --target build runs `next build` too, so a type or build error
+          # fails here rather than during the swap.
+          docker build -f frontend/Dockerfile.prod --target build -t esax-web-test frontend
+          docker run --rm esax-web-test npm test
+
       - name: Build images
         shell: bash
         # The currently running containers keep serving traffic throughout.
@@ -151,11 +142,13 @@ jobs:
         shell: bash
         run: timeout 20 docker compose ps || true
 
-      - name: Prune dangling images
-        if: success()
+      - name: Clean up test images
+        if: always()
         continue-on-error: true
         shell: bash
-        run: docker image prune -f
+        run: |
+          docker image rm -f esax-api-test esax-web-test > /dev/null 2>&1 || true
+          docker image prune -f
 
       - name: Report failure logs
         if: failure()
