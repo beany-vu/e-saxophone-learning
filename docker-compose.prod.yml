@@ -81,6 +81,9 @@ services:
         # Also baked in, for the same reason. Empty means no analytics tag at
         # all, which is what a copy of this stack without the setting gets.
         NEXT_PUBLIC_GA_ID: ${GA_MEASUREMENT_ID:-}
+        # The same public origin the API allowlists, reused as the canonical
+        # host so the two cannot drift apart.
+        NEXT_PUBLIC_SITE_URL: ${WEB_PUBLIC_URL:-http://localhost:3000}
     container_name: esax_web_prod
     restart: unless-stopped
     environment:

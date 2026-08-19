@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 import { InputProvider } from '@/lib/input-context'
@@ -8,9 +9,25 @@ import Analytics from '@/components/Analytics'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
-  title: 'e-Saxophone Practice',
-  description:
-    'Practice tracking for electronic saxophones such as the Yamaha YDS-120 and YDS-150. Free and open source.',
+  // Resolves every relative URL below, and the per page canonicals.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME,
+    // Each page names itself first: a result reading "Scale trainer" is worth
+    // more than six results all reading the site name.
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: { canonical: SITE_URL },
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: { card: 'summary_large_image', title: SITE_NAME, description: SITE_DESCRIPTION },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
