@@ -289,6 +289,13 @@ frontend/               Next.js 15, App Router, TypeScript
   lib/api.ts            typed fetch wrapper for the API
   lib/auth-context.tsx  who is logged in
   *.test.ts             tests live next to the code they cover
+  Dockerfile            dev image: no build, compose bind-mounts the source
+  Dockerfile.prod       production image: real `next build`, standalone output
+
+docker-compose.yml      dev stack
+docker-compose.prod.yml production stack, plus the Cloudflare tunnel
+scripts/setup-runner.sh registers this repo's self-hosted Actions runner
+.github/workflows/      deploy.yml: test on GitHub, deploy on the self-hosted box
 ```
 
 ## How a request flows
@@ -347,6 +354,7 @@ Read from `.env` by compose. See `.env.example`.
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | yds / yds_dev_pw / yds120 | local dev only |
 | `JWT_SECRET` | dev-secret-change-me | **change for anything but local dev**: `openssl rand -base64 48` |
 | `CORS_ORIGIN` | http://localhost:3000 | only used for direct calls to port 8080 |
+| `COOKIE_SECURE` | false | production sets `true` so the session cookie is HTTPS-only |
 
 ## Database
 
@@ -367,6 +375,99 @@ docker compose down -v && docker compose up -d --build
 
 `note_stats` holds one running counter per (user, note) rather than every event,
 which is what makes the coverage heatmap cheap to read.
+
+## Deployment
+
+Production runs on the same WSL box as the other sites here, behind a Cloudflare
+tunnel. Nothing is port-forwarded: `cloudflared` dials out to Cloudflare and
+traffic arrives over that connection.
+
+```
+browser -> Cloudflare edge -> tunnel (outbound) -> web:3000 -> api:8080 -> db
+```
+
+| Hostname | Service |
+|---|---|
+| `e-saxophone.body-and-binary.net` | `web:3000`, the Next.js app |
+| `e-saxophone-api.body-and-binary.net` | `api:8080`, the Go API directly |
+
+The browser normally only ever talks to the first one: Next rewrites `/api/*` to
+the Go service over the compose network, so the session cookie is same-origin.
+The API hostname exists for callers outside the browser, such as the MCP server.
+
+### One-time setup
+
+**1. Create the tunnel.** In the Cloudflare dashboard, Zero Trust, Networks,
+Tunnels, create a **Cloudflared** tunnel. Copy the token it shows. Under Public
+Hostnames add the two rows from the table above (`http://web:3000` and
+`http://api:8080`) — the container resolves those names on the compose network,
+so no IPs or ports are involved. The hostname mapping lives in the dashboard,
+not in this repo.
+
+**2. Add the repository secrets** at Settings, Secrets and variables, Actions:
+
+| Secret | How to generate |
+|---|---|
+| `CLOUDFLARE_TUNNEL_TOKEN` | from step 1 |
+| `JWT_SECRET` | `openssl rand -base64 48` |
+| `POSTGRES_PASSWORD` | `openssl rand -base64 32` |
+
+`POSTGRES_USER` and `POSTGRES_DB` are optional secrets; the compose file
+defaults to `yds` / `yds120`. `WEB_PUBLIC_URL` is an optional repository
+*variable* that overrides the CORS origin if the hostname changes.
+
+**3. Register the runner.** Each repo on this box gets its own runner and its
+own systemd service. Grab a registration token from
+`Settings, Actions, Runners, New self-hosted runner`, then:
+
+```bash
+./scripts/setup-runner.sh <registration-token>
+```
+
+### Deploying
+
+Every push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml),
+or trigger it by hand from the Actions tab. It runs the tests on GitHub's
+runners first, then on the self-hosted runner it builds the new images while the
+old containers keep serving, swaps them, and waits for both to answer before
+declaring success.
+
+By hand on the box:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f web api
+```
+
+The prod stack uses its own compose project name (`e-saxophone-prod`), so its
+database volume is separate from the dev one and a `docker compose down -v` in
+dev cannot touch it. Only `127.0.0.1:3010` (web) and `127.0.0.1:8090` (api) are
+published, for debugging from the box itself; Postgres is not published at all.
+
+### Production differences
+
+- `frontend/Dockerfile.prod` does a real `next build` with `output: 'standalone'`.
+  The dev `Dockerfile` skips the build entirely and relies on the bind mount.
+  `API_INTERNAL_URL` is a **build arg** there, because `next build` resolves the
+  rewrite destination and bakes it in — setting it only at runtime does nothing.
+- `COOKIE_SECURE=true` marks the session cookie HTTPS-only.
+- Both containers carry the `autoheal` label, so the autoheal container already
+  running on this host restarts them if a healthcheck starts failing.
+
+### Tunnel troubleshooting
+
+**Cloudflare 530 / `error code: 1033`** means the tunnel or its origin is down,
+not a bug in the app:
+
+```bash
+docker compose -f docker-compose.prod.yml logs --tail=50 cloudflare-tunnel
+docker compose -f docker-compose.prod.yml restart cloudflare-tunnel
+```
+
+**502 from Cloudflare** means the tunnel is connected but the service behind a
+public hostname is not answering. Check the hostname points at `http://web:3000`
+or `http://api:8080` and that the container is healthy (`... ps`).
 
 ## Troubleshooting
 

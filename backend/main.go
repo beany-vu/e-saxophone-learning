@@ -15,6 +15,7 @@ func main() {
 	jwtSecret := mustEnv("JWT_SECRET")
 	port := getenv("PORT", "8080")
 	corsOrigin := getenv("CORS_ORIGIN", "http://localhost:3000")
+	cookieSecure := getenv("COOKIE_SECURE", "false") == "true"
 
 	pool, err := connectWithRetry(ctx, dbURL, 15)
 	if err != nil {
@@ -27,7 +28,12 @@ func main() {
 	}
 	log.Println("database ready, schema applied")
 
-	s := &server{db: pool, jwtSecret: []byte(jwtSecret), corsOrigin: corsOrigin}
+	s := &server{
+		db:           pool,
+		jwtSecret:    []byte(jwtSecret),
+		corsOrigin:   corsOrigin,
+		cookieSecure: cookieSecure,
+	}
 
 	srv := &http.Server{
 		Addr:         ":" + port,

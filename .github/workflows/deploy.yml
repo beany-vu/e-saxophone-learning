@@ -1,0 +1,163 @@
+name: Deploy to production
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Queue deploys rather than cancelling them. Cancelling mid-swap can leave the
+# stack half-recreated, which is worse than waiting for the previous run.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # Runs on GitHub's runners so the deploy box stays clean and the production
+  # database is never anywhere near a test. Delete this job (and the `needs:`
+  # below) to deploy without gating on tests.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: yds
+          POSTGRES_PASSWORD: yds_test_pw
+          POSTGRES_DB: yds120
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U yds -d yds120"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: backend/go.sum
+
+      - name: Backend tests
+        working-directory: backend
+        env:
+          # Without this the database-backed tests skip themselves silently.
+          DATABASE_URL: postgres://yds:yds_test_pw@localhost:5432/yds120?sslmode=disable
+          JWT_SECRET: test-secret
+        run: go test ./... -count=1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend tests
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+
+      - name: Frontend production build
+        working-directory: frontend
+        # Catches type and build errors here rather than on the deploy box,
+        # where a failed build means the swap step is where you find out.
+        run: npm run build
+
+  deploy:
+    needs: test
+    runs-on: self-hosted
+    timeout-minutes: 20
+
+    env:
+      COMPOSE_FILE: docker-compose.prod.yml
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+      # Optional; the compose file carries a default for each.
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      WEB_PUBLIC_URL: ${{ vars.WEB_PUBLIC_URL }}
+      COMPOSE_HTTP_TIMEOUT: 300
+      DOCKER_CLIENT_TIMEOUT: 300
+
+    steps:
+      - name: Check Docker is responsive
+        shell: bash
+        run: |
+          for i in $(seq 1 12); do
+            docker info > /dev/null 2>&1 && echo "Docker is responsive" && exit 0
+            echo "  waiting for Docker... ($((i*5))s / 60s)"
+            sleep 5
+          done
+          echo "Docker is not responding after 60s. Is Docker Desktop running with WSL integration on?" >&2
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Validate secrets
+        shell: bash
+        run: |
+          missing=0
+          for v in POSTGRES_PASSWORD JWT_SECRET CLOUDFLARE_TUNNEL_TOKEN; do
+            val="${!v}"
+            if [ -z "$val" ]; then
+              echo "$v is missing" >&2
+              missing=1
+            else
+              echo "$v present (${#val} chars)"
+            fi
+          done
+          [ $missing -eq 0 ] || { echo "Aborting - set the missing repository secrets." >&2; exit 1; }
+
+      - name: Build images
+        shell: bash
+        # The currently running containers keep serving traffic throughout.
+        run: docker compose build api web
+
+      - name: Start the database
+        shell: bash
+        run: docker compose up -d --no-build db
+
+      - name: Swap to the new containers
+        shell: bash
+        run: |
+          docker compose up -d --no-build --force-recreate api web
+          # --no-deps: the tunnel must not wait on the web healthcheck here.
+          # The dedicated wait below is the real verification.
+          docker compose up -d --no-deps cloudflare-tunnel
+
+      - name: Wait for a healthy stack
+        shell: bash
+        run: |
+          wait_for() {
+            for i in $(seq 1 40); do
+              curl -sf "$1" > /dev/null 2>&1 && { echo "$2 is up"; return 0; }
+              echo "  waiting for $2... ($i/40)"
+              sleep 3
+            done
+            echo "$2 never came up" >&2
+            docker compose logs --tail=40 "$3" || true
+            return 1
+          }
+          wait_for http://127.0.0.1:8090/health API api
+          wait_for http://127.0.0.1:3010/ web web
+
+      - name: Show status
+        if: always()
+        shell: bash
+        run: timeout 20 docker compose ps || true
+
+      - name: Prune dangling images
+        if: success()
+        continue-on-error: true
+        shell: bash
+        run: docker image prune -f
+
+      - name: Report failure logs
+        if: failure()
+        shell: bash
+        run: timeout 20 docker compose logs --tail=50 api web cloudflare-tunnel 2>/dev/null || echo "could not fetch logs"

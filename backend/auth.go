@@ -60,7 +60,7 @@ func (s *server) setSessionCookie(w http.ResponseWriter, token string) {
 		Path:     "/",
 		HttpOnly: true, // JS cannot read it, which blocks token theft via XSS
 		SameSite: http.SameSiteLaxMode,
-		Secure:   false, // flip to true once served over HTTPS
+		Secure:   s.cookieSecure,
 		MaxAge:   int(sessionTTL.Seconds()),
 	})
 }
@@ -72,7 +72,10 @@ func (s *server) clearSessionCookie(w http.ResponseWriter) {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
+		// Must match the attributes it was set with, or the browser keeps the
+		// original cookie and logout silently does nothing.
+		Secure: s.cookieSecure,
+		MaxAge: -1,
 	})
 }
 

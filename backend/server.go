@@ -13,6 +13,9 @@ type server struct {
 	db         *pgxpool.Pool
 	jwtSecret  []byte
 	corsOrigin string
+	// cookieSecure marks the session cookie Secure, so the browser only ever
+	// sends it over HTTPS. Off in local dev, which is plain http.
+	cookieSecure bool
 }
 
 // route is one endpoint. Keeping them as data rather than as a run of
@@ -65,7 +68,7 @@ func (s *server) withMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Vary", "Origin")
 		}
 		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.WriteHeader(http.StatusNoContent)
 			return
