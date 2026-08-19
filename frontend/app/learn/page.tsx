@@ -31,6 +31,14 @@ import {
 } from '@/lib/fingerings'
 import { formatDuration, toConcert, yamahaName } from '@/lib/notes'
 import { describeOffset } from '@/lib/calibration'
+import {
+  barFraction,
+  classifyTiming,
+  msPerBeat,
+  onsets,
+  overdue,
+  type Timing,
+} from '@/lib/playhead'
 import { useI18n } from '@/lib/i18n-context'
 import type { Lang, StringKey } from '@/lib/i18n'
 import { localiseItem } from '@/lib/curriculum-i18n'
@@ -259,6 +267,36 @@ export default function LearnPage() {
   const [done, setDone] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
+  // ---- Playing in time ----------------------------------------------------
+  // A bar travels the line at the tempo and you play each note as it arrives.
+  // Miss one and the bar stops and waits there rather than leaving you behind,
+  // which is the whole point: it drills the note you cannot reach yet.
+  const [inTime, setInTime] = useState(false)
+  const [waiting, setWaiting] = useState(false)
+  const [stalls, setStalls] = useState(0)
+  const [timing, setTiming] = useState({ early: 0, onTime: 0, late: 0 })
+  const [lastTiming, setLastTiming] = useState<Timing | null>(null)
+  // The clock is a ref, not state: it ticks every frame, and putting it in
+  // state would re-render every note card sixty times a second. The bar moves
+  // by writing to its own element instead.
+  const clockRef = useRef(0)
+  const barRef = useRef<HTMLDivElement>(null)
+  const starts = useMemo(() => onsets(segment?.beats), [segment])
+  const startsRef = useRef<number[]>([])
+  startsRef.current = starts
+  const beatsRef = useRef<number[] | undefined>(undefined)
+  beatsRef.current = segment?.beats
+  const inTimeRef = useRef(false)
+  inTimeRef.current = inTime
+  const waitingRef = useRef(false)
+  waitingRef.current = waiting
+
+  /** Puts the bar back at the left edge without waiting for a frame. */
+  const resetClock = useCallback(() => {
+    clockRef.current = 0
+    if (barRef.current) barRef.current.style.left = '0%'
+  }, [])
+
   // The note callback must see current values without resubscribing mid-run.
   const runRef = useRef({ running: false, index: 0, notes: [] as number[] })
   runRef.current = { running, index, notes: segment?.notes ?? [] }
@@ -268,6 +306,34 @@ export default function LearnPage() {
     const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000)
     return () => clearInterval(t)
   }, [running, startedAt])
+
+  // The clock, one frame at a time. It stops dead while the bar is waiting,
+  // and picks up from where it stopped when the note finally arrives.
+  useEffect(() => {
+    if (!running || !inTime || waiting || !segment) return
+    const per = msPerBeat(tempo)
+    const startWall = performance.now() - clockRef.current * per
+    let raf = 0
+    const tick = () => {
+      const beats = (performance.now() - startWall) / per
+      clockRef.current = beats
+      if (barRef.current) {
+        barRef.current.style.left = `${barFraction(beats, startsRef.current, beatsRef.current) * 100}%`
+      }
+      const at = runRef.current.index
+      if (overdue(beats, startsRef.current[at] ?? 0)) {
+        // Stop the loop rather than schedule another frame: flipping waiting
+        // re-runs this effect, and it will not start again until the note is
+        // played and the flag clears.
+        setStalls((n) => n + 1)
+        setWaiting(true)
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [running, inTime, waiting, tempo, segment])
 
   const playingRef = useRef(false)
   playingRef.current = player.playing
@@ -289,6 +355,17 @@ export default function LearnPage() {
     if (note === target) {
       setCorrect((c) => c + 1)
       setHint(null)
+      if (inTimeRef.current) {
+        const kind = classifyTiming(clockRef.current - (startsRef.current[at] ?? 0))
+        setTiming((counts) => ({ ...counts, [kind]: counts[kind] + 1 }))
+        setLastTiming(kind)
+        if (waitingRef.current) {
+          // Carry on from this note's own beat, so the next one still gets its
+          // full length rather than being counted late for the wait.
+          clockRef.current = startsRef.current[at] ?? 0
+          setWaiting(false)
+        }
+      }
       setIndex((i) => {
         const next = i + 1
         if (next >= notes.length) {
@@ -324,6 +401,16 @@ export default function LearnPage() {
     setWrong(0)
     setHint(null)
     setDone(false)
+    resetTiming()
+  }
+
+  /** Everything the bar knows, back to the start of the line. */
+  function resetTiming() {
+    setWaiting(false)
+    setStalls(0)
+    setTiming({ early: 0, onTime: 0, late: 0 })
+    setLastTiming(null)
+    resetClock()
   }
 
   function start(item: PracticeItem) {
@@ -342,6 +429,7 @@ export default function LearnPage() {
     setDone(false)
     setSaveMsg(null)
     setElapsed(0)
+    resetTiming()
     setStartedAt(Date.now())
     setRunning(true)
     input.reset()
@@ -359,6 +447,10 @@ export default function LearnPage() {
         notesPlayed: correct + wrong,
         correctNotes: correct,
         wrongNotes: wrong,
+        // Only meaningful for a run played in time, and zero is honest for the
+        // rest: nobody waited, because nothing was keeping time.
+        stalls: inTime ? stalls : 0,
+        onTimeNotes: inTime ? timing.onTime : 0,
         noteCounts: counts,
       })
       setSaveMsg(t('learn.savedToProgress'))
@@ -741,13 +833,15 @@ export default function LearnPage() {
                 </div>
               )}
 
-              <div className="seq" style={showGrips ? { alignItems: 'flex-start' } : undefined}>
+              <div style={{ position: 'relative' }}>
+                {inTime && running && <div ref={barRef} className="playhead" />}
+                <div className="seq" style={showGrips ? { alignItems: 'flex-start' } : undefined}>
                 {segment!.notes.map((midi, i) => (
                   <div
                     key={i}
                     className={`step${i < index && !player.playing ? ' done' : ''}${
                       (running && i === index) || player.index === i ? ' current' : ''
-                    }`}
+                    }${waiting && i === index ? ' waiting' : ''}`}
                   >
                     <div>{n(midi)}</div>
                     {segment!.lyrics && (
@@ -765,7 +859,25 @@ export default function LearnPage() {
                       ))}
                   </div>
                 ))}
+                </div>
               </div>
+
+              {inTime && running && (
+                <p
+                  className={waiting ? 'error' : 'muted'}
+                  style={{ marginTop: 8, marginBottom: 0, fontSize: 13 }}
+                >
+                  {waiting
+                    ? t('learn.waitingFor', { note: n(segment!.notes[index]) })
+                    : lastTiming === 'early'
+                      ? t('learn.tooEarly')
+                      : lastTiming === 'late'
+                        ? t('learn.tooLate')
+                        : lastTiming === 'onTime'
+                          ? t('learn.rightOnTime')
+                          : t('learn.playInTimeHint')}
+                </p>
+              )}
 
               <div className="stat-grid" style={{ marginTop: 14 }}>
                 <div className="stat">
@@ -785,6 +897,18 @@ export default function LearnPage() {
                   <div className="value">{wrong}</div>
                   <div className="label">{t('learn.wrongNotes')}</div>
                 </div>
+                {inTime && (
+                  <>
+                    <div className="stat">
+                      <div className="value">{timing.onTime}</div>
+                      <div className="label">{t('learn.onTime')}</div>
+                    </div>
+                    <div className="stat">
+                      <div className="value">{stalls}</div>
+                      <div className="label">{t('learn.stalls')}</div>
+                    </div>
+                  </>
+                )}
                 <div className="stat">
                   <div className="value">{formatDuration(elapsed)}</div>
                   <div className="label">{t('learn.time')}</div>
@@ -880,6 +1004,18 @@ export default function LearnPage() {
                     style={{ width: 'auto' }}
                   />
                   <span style={{ fontSize: 13 }}>{t('common.showFingerings')}</span>
+                </label>
+                <label className="row" style={{ gap: 6, alignItems: 'center', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={inTime}
+                    onChange={(e) => {
+                      setInTime(e.target.checked)
+                      resetTiming()
+                    }}
+                    style={{ width: 'auto' }}
+                  />
+                  <span style={{ fontSize: 13 }}>{t('learn.playInTime')}</span>
                 </label>
                 <label htmlFor="tempo" className="label" style={{ margin: 0 }}>
                   {tempo} bpm

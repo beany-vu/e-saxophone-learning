@@ -51,3 +51,10 @@ CREATE TABLE IF NOT EXISTS note_stats (
 -- arrives through ADMIN_EMAIL at start-up, and every later one is promoted by
 -- an admin who is already there.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Playing in time: how often the bar had to stop and wait for a note, and how
+-- many notes landed inside the window. Both stay zero for a run that was not
+-- played in time, which is honest rather than missing: nothing was keeping
+-- time, so nobody waited.
+ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS stalls        INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS on_time_notes INTEGER NOT NULL DEFAULT 0;

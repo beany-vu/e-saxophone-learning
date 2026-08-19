@@ -148,7 +148,18 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
 .meter { height: 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
 .meter > div { height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width 60ms linear; }
 
+/* The bar that travels the line when you are playing in time. It is moved by
+   writing to style.left every frame, so it must not carry a transition: one
+   would fight the clock and leave the bar lagging behind the beat. */
+.playhead {
+  position: absolute; top: -4px; bottom: -4px; width: 2px; z-index: 2;
+  background: var(--accent-2); box-shadow: 0 0 6px var(--accent-2);
+  pointer-events: none;
+}
+
 .seq { display: flex; gap: 6px; flex-wrap: wrap; }
+/* The note the bar is sitting on, waiting for you to play it. */
+.seq .step.waiting { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset; }
 .seq .step {
   min-width: 42px; text-align: center; padding: 7px 6px; border-radius: 7px;
   border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; color: var(--muted);

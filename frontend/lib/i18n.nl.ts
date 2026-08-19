@@ -317,4 +317,14 @@ export const nl: Record<StringKey, string> = {
   'admin.promoted': '{email} is nu beheerder.',
   'admin.demoted': '{email} is geen beheerder meer.',
   'common.cancel': 'Annuleren',
+
+  // ---- Op tijd spelen ----
+  'learn.playInTime': 'Op tijd spelen',
+  'learn.playInTimeHint': 'De balk loopt in het tempo over de regel. Speel elke noot zodra hij er is. Mis je er een, dan wacht de balk daar tot het lukt.',
+  'learn.waitingFor': 'Wacht op {note}',
+  'learn.tooEarly': 'Iets te vroeg.',
+  'learn.tooLate': 'Iets te laat.',
+  'learn.rightOnTime': 'Precies op de tel.',
+  'learn.onTime': 'Op tijd',
+  'learn.stalls': 'Keer gewacht',
 }

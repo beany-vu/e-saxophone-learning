@@ -114,6 +114,29 @@ func TestPracticeSessions(t *testing.T) {
 		}
 	})
 
+	// Playing in time records two extra numbers. A run that was not played in
+	// time sends zeroes, which is why they have to survive the round trip
+	// rather than being inferred later from the rest of the session.
+	t.Run("keeps how often the bar waited and how many notes were on time", func(t *testing.T) {
+		uid := testUser(t, pool)
+		rec := postSession(t, s, uid, createSessionRequest{
+			Source: "warmup", NotesPlayed: 8, CorrectNotes: 8, Stalls: 3, OnTimeNotes: 5,
+		})
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("status = %d, want 201: %s", rec.Code, rec.Body.String())
+		}
+		var stalls, onTime int
+		err := pool.QueryRow(context.Background(),
+			`SELECT stalls, on_time_notes FROM practice_sessions WHERE user_id = $1`, uid,
+		).Scan(&stalls, &onTime)
+		if err != nil {
+			t.Fatalf("read back: %v", err)
+		}
+		if stalls != 3 || onTime != 5 {
+			t.Errorf("stored %d waits and %d on time, want 3 and 5", stalls, onTime)
+		}
+	})
+
 	t.Run("adds to the running per-note total rather than replacing it", func(t *testing.T) {
 		uid := testUser(t, pool)
 		postSession(t, s, uid, createSessionRequest{NotesPlayed: 3, NoteCounts: map[string]int{"72": 3}})
