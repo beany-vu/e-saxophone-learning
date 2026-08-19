@@ -35,7 +35,23 @@ import { useI18n } from '@/lib/i18n-context'
 import type { Lang, StringKey } from '@/lib/i18n'
 import { localiseItem } from '@/lib/curriculum-i18n'
 import { localiseWeek, localisePhase } from '@/lib/course-i18n'
-import { COURSE, PHASES, weekDates, weekFor, weekStatus } from '@/lib/course'
+import {
+  COURSE,
+  PHASES,
+  DEFAULT_START as COURSE_DEFAULT_START,
+  weekDates,
+  weekFor,
+  weekStatus,
+  finishDate,
+  pace,
+} from '@/lib/course'
+import {
+  START_KEY,
+  TARGET_KEY,
+  isValidDate,
+  resolveDates,
+  today,
+} from '@/lib/course-dates'
 import {
   completion,
   isDone,
@@ -66,9 +82,24 @@ export default function LearnPage() {
   const [workingWeek, setWorkingWeek] = useState(1)
   const [calendarWeek, setCalendarWeek] = useState<number | null>(null)
   const [weeksDone, setWeeksDone] = useState<number[]>([])
+  // The learner's own dates. The course used to hold one hard-coded start,
+  // which marched every account through the same calendar.
+  const [startDate, setStartDate] = useState(COURSE_DEFAULT_START)
+  const [targetEnd, setTargetEnd] = useState('')
+  const [datesMsg, setDatesMsg] = useState<string | null>(null)
+
+  // Dates resolve from the account first, then this browser, then the default.
+  useEffect(() => {
+    const resolved = resolveDates(user, {
+      start: localStorage.getItem(START_KEY),
+      target: localStorage.getItem(TARGET_KEY),
+    })
+    setStartDate(resolved.start)
+    setTargetEnd(resolved.target)
+  }, [user])
 
   useEffect(() => {
-    const onCalendar = weekFor(new Date())?.week ?? null
+    const onCalendar = weekFor(new Date(), startDate)?.week ?? null
     setCalendarWeek(onCalendar)
     const finished = parseDone(localStorage.getItem(DONE_STORAGE_KEY))
     setWeeksDone(finished)
@@ -76,7 +107,27 @@ export default function LearnPage() {
     if (saved >= 1 && saved <= COURSE.length) setWorkingWeek(saved)
     else if (finished.length) setWorkingWeek(nextUnfinished(finished, COURSE.length))
     else setWorkingWeek(onCalendar ?? 1)
-  }, [])
+  }, [startDate])
+
+  async function saveDates(nextStart: string, nextTarget: string) {
+    if (!isValidDate(nextStart)) return setDatesMsg(t('course.badDate'))
+    if (nextTarget && !isValidDate(nextTarget)) return setDatesMsg(t('course.badDate'))
+    if (nextTarget && nextTarget <= nextStart) return setDatesMsg(t('course.targetBeforeStart'))
+
+    setStartDate(nextStart)
+    setTargetEnd(nextTarget)
+    localStorage.setItem(START_KEY, nextStart)
+    localStorage.setItem(TARGET_KEY, nextTarget)
+    setWorkingWeek(weekFor(new Date(), nextStart)?.week ?? 1)
+
+    if (!user) return setDatesMsg(t('course.datesLocal'))
+    try {
+      await api.setCourseDates(nextStart, nextTarget)
+      setDatesMsg(t('course.datesAccount'))
+    } catch (err) {
+      setDatesMsg(err instanceof Error ? err.message : 'save failed')
+    }
+  }
 
   /** Ticking a week moves you on to the next one still outstanding. */
   const toggleWeekDone = useCallback(
@@ -390,7 +441,7 @@ export default function LearnPage() {
               {t('course.weekOf', { week: week.week, total: COURSE.length })}: {week.title}
             </h2>
             <span className="muted" style={{ fontSize: 13 }}>
-              {weekDates(week.week).start} to {weekDates(week.week).end}
+              {weekDates(week.week, startDate).start} to {weekDates(week.week, startDate).end}
               {phase ? ` · ${phase.title}` : ''} ·{' '}
               {t('course.completion', { done: progress.done, total: progress.total })}
             </span>
@@ -477,6 +528,59 @@ export default function LearnPage() {
           )}
           <details style={{ marginTop: 12 }}>
             <summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>
+              {t('course.dates')}
+            </summary>
+            <div className="row" style={{ marginTop: 10, alignItems: 'flex-end', gap: 12 }}>
+              <div style={{ minWidth: 170 }}>
+                <label htmlFor="course-start" className="label">
+                  {t('course.startDate')}
+                </label>
+                <input
+                  id="course-start"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => saveDates(e.target.value, targetEnd)}
+                />
+              </div>
+              <div style={{ minWidth: 170 }}>
+                <label htmlFor="course-target" className="label">
+                  {t('course.targetDate')}
+                </label>
+                <input
+                  id="course-target"
+                  type="date"
+                  value={targetEnd}
+                  onChange={(e) => saveDates(startDate, e.target.value)}
+                />
+              </div>
+              <button className="ghost" onClick={() => saveDates(today(), targetEnd)}>
+                {t('course.startToday')}
+              </button>
+            </div>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>
+              {t('course.finishes', { date: finishDate(startDate) })}
+              {targetEnd && isValidDate(targetEnd) && (
+                <>
+                  {' '}
+                  {(() => {
+                    const p = pace(startDate, targetEnd)
+                    const rate = p.weeksPerWeek.toFixed(1)
+                    if (p.verdict === 'rushed') return t('course.paceRushed', { rate })
+                    if (p.verdict === 'relaxed') return t('course.paceRelaxed', { rate })
+                    return t('course.paceSteady')
+                  })()}
+                </>
+              )}
+            </p>
+            {datesMsg && (
+              <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>
+                {datesMsg}
+              </p>
+            )}
+          </details>
+
+          <details style={{ marginTop: 12 }}>
+            <summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>
               {t('course.wholePlan', { total: COURSE.length })}
             </summary>
             <div style={{ marginTop: 10 }}>
@@ -506,7 +610,7 @@ export default function LearnPage() {
                             {isDone(weeksDone, n) ? '✓' : '○'}
                           </span>{' '}
                           {t('course.weekOf', { week: n, total: COURSE.length })} (
-                          {weekDates(n).start}): {w.title}. {w.goal}
+                          {weekDates(n, startDate).start}): {w.title}. {w.goal}
                           {n === week.week ? ` · ${t('course.currentWeek')}` : ''}
                         </li>
                       )

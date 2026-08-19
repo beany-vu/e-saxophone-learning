@@ -2,7 +2,14 @@
 // the Go service by next.config.mjs), and credentials:'include' makes the
 // browser send the session cookie.
 
-export type User = { id: string; email: string; displayName: string }
+export type User = {
+  id: string
+  email: string
+  displayName: string
+  /** Empty until the learner picks dates. Per account, not per browser. */
+  courseStart: string
+  courseTargetEnd: string
+}
 
 export type SessionBrief = {
   id: string
@@ -69,6 +76,12 @@ export const api = {
   me: () => request<User>('/api/auth/me'),
 
   summary: () => request<Summary>('/api/practice/summary'),
+
+  setCourseDates: (startDate: string, targetEnd: string) =>
+    request<{ status: string }>('/api/practice/course', {
+      method: 'PUT',
+      body: JSON.stringify({ startDate, targetEnd }),
+    }),
 
   saveSession: (payload: {
     source: string

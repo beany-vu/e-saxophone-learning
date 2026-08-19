@@ -26,6 +26,12 @@ ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS item          TEXT    NOT
 ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS correct_notes INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS wrong_notes   INTEGER NOT NULL DEFAULT 0;
 
+-- When this learner started the course, and when they want to finish. Null
+-- until they choose: the course used to have one hard-coded start date, which
+-- only worked while there was exactly one learner.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS course_start DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS course_target_end DATE;
+
 -- One row per (user, midi note): how many times that note has been played.
 -- Powers the weakness heatmap on the Progress page.
 CREATE TABLE IF NOT EXISTS note_stats (

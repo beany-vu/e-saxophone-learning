@@ -261,6 +261,19 @@ const en = {
   'course.currentWeek': 'current week',
   'course.doneLabel': 'done',
   'course.continueAt': 'Continue at week {week}',
+  'course.dates': 'Course dates',
+  'course.startDate': 'I started on',
+  'course.targetDate': 'I want to finish by',
+  'course.finishes': 'Twenty weeks takes you to {date}',
+  'course.paceRushed': 'That target leaves less time than the material needs: about {rate} weeks of the course per calendar week. Doable, but expect to skip the spare week.',
+  'course.paceRelaxed': 'That leaves plenty of room: about {rate} weeks of the course per calendar week.',
+  'course.paceSteady': 'That matches the twenty weeks almost exactly.',
+  'course.saveDates': 'Save dates',
+  'course.startToday': 'Start today',
+  'course.datesLocal': 'Saved in this browser. Log in and they follow your account instead.',
+  'course.datesAccount': 'Saved to your account.',
+  'course.badDate': 'That is not a date the course can use.',
+  'course.targetBeforeStart': 'The finish date has to come after the start date.',
 } as const
 
 export type StringKey = keyof typeof en
@@ -508,6 +521,19 @@ const fr: Record<StringKey, string> = {
   'course.currentWeek': 'semaine en cours',
   'course.doneLabel': 'faite',
   'course.continueAt': 'Reprendre a la semaine {week}',
+  'course.dates': 'Dates du cours',
+  'course.startDate': 'J’ai commence le',
+  'course.targetDate': 'Je veux finir avant le',
+  'course.finishes': 'Vingt semaines vous menent au {date}',
+  'course.paceRushed': 'Cet objectif laisse moins de temps que la matiere n’en demande : environ {rate} semaines de cours par semaine calendaire. Faisable, mais prevoyez de sauter la semaine libre.',
+  'course.paceRelaxed': 'Cela laisse de la marge : environ {rate} semaines de cours par semaine calendaire.',
+  'course.paceSteady': 'Cela correspond presque exactement aux vingt semaines.',
+  'course.saveDates': 'Enregistrer les dates',
+  'course.startToday': 'Commencer aujourd’hui',
+  'course.datesLocal': 'Enregistrees dans ce navigateur. Connectez-vous et elles suivront votre compte.',
+  'course.datesAccount': 'Enregistrees dans votre compte.',
+  'course.badDate': 'Ce n’est pas une date utilisable par le cours.',
+  'course.targetBeforeStart': 'La date de fin doit venir apres la date de debut.',
 }
 
 export const STRINGS: Record<Lang, Record<string, string>> = { en, fr }

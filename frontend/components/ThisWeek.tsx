@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { COURSE, PHASES, weekDates, weekFor } from '@/lib/course'
+import { COURSE, DEFAULT_START, PHASES, weekDates, weekFor } from '@/lib/course'
+import { START_KEY, TARGET_KEY, resolveDates } from '@/lib/course-dates'
+import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n-context'
 import { localiseWeek, localisePhase } from '@/lib/course-i18n'
 import { completion, isDone, nextUnfinished, parseDone } from '@/lib/course-progress'
@@ -16,23 +18,31 @@ import { completion, isDone, nextUnfinished, parseDone } from '@/lib/course-prog
  */
 export default function ThisWeek() {
   const { lang, t } = useI18n()
+  const { user } = useAuth()
   const [weekNumber, setWeekNumber] = useState(1)
   const [weeksDone, setWeeksDone] = useState<number[]>([])
+  const [startDate, setStartDate] = useState(DEFAULT_START)
 
   useEffect(() => {
+    const start = resolveDates(user, {
+      start: localStorage.getItem(START_KEY),
+      target: localStorage.getItem(TARGET_KEY),
+    }).start
+    setStartDate(start)
+
     const finished = parseDone(localStorage.getItem('yds120.courseDone'))
     setWeeksDone(finished)
     const saved = Number(localStorage.getItem('yds120.courseWeek'))
     if (saved >= 1 && saved <= COURSE.length) setWeekNumber(saved)
     else if (finished.length) setWeekNumber(nextUnfinished(finished, COURSE.length))
-    else setWeekNumber(weekFor(new Date())?.week ?? 1)
-  }, [])
+    else setWeekNumber(weekFor(new Date(), start)?.week ?? 1)
+  }, [user])
 
   const progress = completion(weeksDone, COURSE.length)
 
   const week = localiseWeek(COURSE.find((w) => w.week === weekNumber) ?? COURSE[0], lang)
   const phase = PHASES.find((p) => p.weeks.includes(week.week))
-  const dates = weekDates(week.week)
+  const dates = weekDates(week.week, startDate)
 
   return (
     <div className="panel" style={{ borderColor: 'var(--accent)' }}>

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,6 +20,10 @@ type userResponse struct {
 	ID          string `json:"id"`
 	Email       string `json:"email"`
 	DisplayName string `json:"displayName"`
+	// Empty until the learner picks dates. Each account has its own, so two
+	// people are not marched through the same calendar.
+	CourseStart string `json:"courseStart"`
+	TargetEnd   string `json:"courseTargetEnd"`
 }
 
 // handleSignup creates an account, then logs the user in by setting the cookie.
@@ -117,12 +122,20 @@ func (s *server) handleLogout(w http.ResponseWriter, _ *http.Request) {
 func (s *server) handleMe(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFrom(r.Context())
 	var u userResponse
+	var start, target *time.Time
 	err := s.db.QueryRow(r.Context(),
-		`SELECT id, email, display_name FROM users WHERE id = $1`, uid,
-	).Scan(&u.ID, &u.Email, &u.DisplayName)
+		`SELECT id, email, display_name, course_start, course_target_end
+		 FROM users WHERE id = $1`, uid,
+	).Scan(&u.ID, &u.Email, &u.DisplayName, &start, &target)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "session user not found")
 		return
+	}
+	if start != nil {
+		u.CourseStart = start.Format(dateLayout)
+	}
+	if target != nil {
+		u.TargetEnd = target.Format(dateLayout)
 	}
 	writeJSON(w, http.StatusOK, u)
 }

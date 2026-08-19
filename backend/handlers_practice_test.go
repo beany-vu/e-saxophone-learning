@@ -200,3 +200,104 @@ func TestPracticeSessions(t *testing.T) {
 		}
 	})
 }
+
+func TestCourseDates(t *testing.T) {
+	pool := testDB(t)
+	testPool = pool
+	s := &server{db: pool, jwtSecret: []byte("test"), corsOrigin: "http://localhost:3000"}
+
+	setDates := func(t *testing.T, uid, start, end string) *httptest.ResponseRecorder {
+		t.Helper()
+		raw, _ := json.Marshal(courseRequest{StartDate: start, TargetEnd: end})
+		req := httptest.NewRequest("PUT", "/api/practice/course", bytes.NewReader(raw))
+		req = req.WithContext(context.WithValue(req.Context(), userIDKey, uid))
+		rec := httptest.NewRecorder()
+		s.handleSetCourse(rec, req)
+		return rec
+	}
+
+	me := func(t *testing.T, uid string) userResponse {
+		t.Helper()
+		req := httptest.NewRequest("GET", "/api/auth/me", nil)
+		req = req.WithContext(context.WithValue(req.Context(), userIDKey, uid))
+		rec := httptest.NewRecorder()
+		s.handleMe(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("me status = %d: %s", rec.Code, rec.Body.String())
+		}
+		var out userResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatalf("me is not JSON: %v", err)
+		}
+		return out
+	}
+
+	t.Run("a new account has no course dates until it picks some", func(t *testing.T) {
+		uid := testUser(t, pool)
+		got := me(t, uid)
+		if got.CourseStart != "" || got.TargetEnd != "" {
+			t.Errorf("new user already has dates: %+v", got)
+		}
+	})
+
+	t.Run("saves the dates and reads them back", func(t *testing.T) {
+		uid := testUser(t, pool)
+		if rec := setDates(t, uid, "2027-01-04", "2027-05-24"); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+		}
+		got := me(t, uid)
+		if got.CourseStart != "2027-01-04" || got.TargetEnd != "2027-05-24" {
+			t.Errorf("dates = %q and %q", got.CourseStart, got.TargetEnd)
+		}
+	})
+
+	t.Run("two learners keep their own dates", func(t *testing.T) {
+		first := testUser(t, pool)
+		second := testUser(t, pool)
+		setDates(t, first, "2026-08-19", "2027-01-05")
+		setDates(t, second, "2027-03-01", "2027-07-19")
+
+		if got := me(t, first).CourseStart; got != "2026-08-19" {
+			t.Errorf("first learner start = %q", got)
+		}
+		if got := me(t, second).CourseStart; got != "2027-03-01" {
+			t.Errorf("second learner start = %q", got)
+		}
+	})
+
+	t.Run("changing the start date later just moves it", func(t *testing.T) {
+		uid := testUser(t, pool)
+		setDates(t, uid, "2026-08-19", "2027-01-05")
+		setDates(t, uid, "2026-09-07", "2027-01-25")
+		if got := me(t, uid).CourseStart; got != "2026-09-07" {
+			t.Errorf("start = %q, want the newer date", got)
+		}
+	})
+
+	t.Run("refuses a date that is not a date", func(t *testing.T) {
+		uid := testUser(t, pool)
+		for _, bad := range []string{"tomorrow", "19-08-2026", "2026-13-45", "2026-08"} {
+			if rec := setDates(t, uid, bad, ""); rec.Code != http.StatusBadRequest {
+				t.Errorf("start %q gave status %d, want 400", bad, rec.Code)
+			}
+		}
+	})
+
+	t.Run("refuses a target that lands before the start", func(t *testing.T) {
+		uid := testUser(t, pool)
+		if rec := setDates(t, uid, "2026-08-19", "2026-08-01"); rec.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want 400", rec.Code)
+		}
+	})
+
+	t.Run("clears the dates when given empty ones", func(t *testing.T) {
+		uid := testUser(t, pool)
+		setDates(t, uid, "2026-08-19", "2027-01-05")
+		if rec := setDates(t, uid, "", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d", rec.Code)
+		}
+		if got := me(t, uid); got.CourseStart != "" || got.TargetEnd != "" {
+			t.Errorf("dates not cleared: %+v", got)
+		}
+	})
+}

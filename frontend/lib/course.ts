@@ -1,4 +1,4 @@
-// A dated course, 20 weeks from 19 August 2026 to New Year's Eve.
+// A twenty week course, dated from whenever each learner starts.
 //
 // The target is specific: read notation well enough to work out a pop ballad,
 // and play one. Everything here is ordered so that each week only needs what
@@ -29,17 +29,59 @@ export type CoursePhase = {
   weeks: number[]
 }
 
-export const COURSE_START = '2026-08-19'
-export const COURSE_END = '2026-12-31'
+/**
+ * Where the course starts for someone who has not said. It was a constant
+ * once, which was fine for one learner and wrong the moment there were two:
+ * everybody would have been marched through the same calendar regardless of
+ * when they picked up the instrument.
+ */
+export const DEFAULT_START = '2026-08-19'
 
 const DAY = 24 * 60 * 60 * 1000
 
-/** The dates week `n` covers, counting from the start date. */
-export function weekDates(week: number): { start: string; end: string } {
-  const start = new Date(COURSE_START + 'T00:00:00Z').getTime() + (week - 1) * 7 * DAY
-  const end = start + 6 * DAY
-  const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
-  return { start: iso(start), end: iso(end) }
+/** Parses a yyyy-mm-dd date as a local calendar date, never as UTC. */
+function parseDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, (m || 1) - 1, d || 1)
+}
+
+function toISO(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/** The dates week `n` covers for a learner who began on `startDate`. */
+export function weekDates(week: number, startDate: string = DEFAULT_START): { start: string; end: string } {
+  const begin = parseDate(startDate)
+  const start = new Date(begin.getTime() + (week - 1) * 7 * DAY)
+  const end = new Date(start.getTime() + 6 * DAY)
+  return { start: toISO(start), end: toISO(end) }
+}
+
+/** The day after the last week ends, which is when the course is finished. */
+export function finishDate(startDate: string = DEFAULT_START): string {
+  return weekDates(COURSE.length, startDate).end
+}
+
+export type Pace = {
+  /** How many weeks of material each calendar week has to carry. */
+  weeksPerWeek: number
+  verdict: 'relaxed' | 'steady' | 'rushed'
+}
+
+/**
+ * Whether a chosen finish date leaves enough room for the material. The course
+ * is twenty weeks of content; a learner is free to want it sooner, and should
+ * be told what that means rather than quietly given an impossible plan.
+ */
+export function pace(startDate: string, targetEnd: string): Pace {
+  const days = (parseDate(targetEnd).getTime() - parseDate(startDate).getTime()) / DAY
+  if (days <= 0) return { weeksPerWeek: 1, verdict: 'steady' }
+  const availableWeeks = days / 7
+  const weeksPerWeek = COURSE.length / availableWeeks
+  if (weeksPerWeek > 1.25) return { weeksPerWeek, verdict: 'rushed' }
+  if (weeksPerWeek < 0.75) return { weeksPerWeek, verdict: 'relaxed' }
+  return { weeksPerWeek, verdict: 'steady' }
 }
 
 /**
@@ -49,9 +91,8 @@ export function weekDates(week: number): { start: string; end: string } {
  * that for anyone east of it, the early hours of each day belonged to
  * yesterday, and on day one that made the whole course look unstarted.
  */
-export function weekFor(date: Date): CourseWeek | null {
-  const [y, m, d] = COURSE_START.split('-').map(Number)
-  const start = new Date(y, m - 1, d).getTime()
+export function weekFor(date: Date, startDate: string = DEFAULT_START): CourseWeek | null {
+  const start = parseDate(startDate).getTime()
   const today = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
   const days = Math.floor((today - start) / DAY)
   if (days < 0) return null

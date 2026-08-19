@@ -29,6 +29,7 @@ func (s *server) routes() http.Handler {
 
 	mux.HandleFunc("POST /api/practice/sessions", s.requireAuth(s.handleCreateSession))
 	mux.HandleFunc("GET /api/practice/summary", s.requireAuth(s.handleSummary))
+	mux.HandleFunc("PUT /api/practice/course", s.requireAuth(s.handleSetCourse))
 
 	return s.withMiddleware(mux)
 }

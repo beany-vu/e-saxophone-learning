@@ -78,6 +78,59 @@ func (s *server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"id": sessionID})
 }
 
+const dateLayout = "2006-01-02"
+
+type courseRequest struct {
+	StartDate string `json:"startDate"` // yyyy-mm-dd, empty to clear
+	TargetEnd string `json:"targetEnd"` // yyyy-mm-dd, empty to clear
+}
+
+// handleSetCourse stores when this learner started the course and when they
+// want to finish. Both are per account: the plan is twenty weeks of material,
+// and where those weeks land on the calendar is nobody else's business.
+func (s *server) handleSetCourse(w http.ResponseWriter, r *http.Request) {
+	uid := userIDFrom(r.Context())
+
+	var req courseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+
+	// Parsed rather than trusted: a bad date reaching the column would be
+	// rejected by Postgres as a 500, which tells the caller nothing.
+	var start, target *time.Time
+	if req.StartDate != "" {
+		parsed, err := time.Parse(dateLayout, req.StartDate)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "startDate must be yyyy-mm-dd")
+			return
+		}
+		start = &parsed
+	}
+	if req.TargetEnd != "" {
+		parsed, err := time.Parse(dateLayout, req.TargetEnd)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "targetEnd must be yyyy-mm-dd")
+			return
+		}
+		target = &parsed
+	}
+	if start != nil && target != nil && !target.After(*start) {
+		writeError(w, http.StatusBadRequest, "targetEnd must be after startDate")
+		return
+	}
+
+	_, err := s.db.Exec(r.Context(),
+		`UPDATE users SET course_start = $2, course_target_end = $3 WHERE id = $1`,
+		uid, start, target)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not save course dates")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 type sessionBrief struct {
 	ID              string `json:"id"`
 	Source          string `json:"source"`

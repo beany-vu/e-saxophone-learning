@@ -1,28 +1,28 @@
 import { describe, it, expect } from 'vitest'
 import {
   COURSE,
-  COURSE_START,
-  COURSE_END,
+  DEFAULT_START,
   weekFor,
   weekDates,
   weekStatus,
+  finishDate,
+  pace,
   PHASES,
 } from '@/lib/course'
 import { ALL_ITEMS } from '@/lib/curriculum'
 
 describe('the course', () => {
-  it('runs from the start date to the end of the year', () => {
-    expect(COURSE_START).toBe('2026-08-19')
-    expect(COURSE_END).toBe('2026-12-31')
+  it('has a default start for someone who has not chosen one', () => {
+    expect(DEFAULT_START).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
   it('numbers its weeks from one, with no gaps', () => {
     expect(COURSE.map((w) => w.week)).toEqual(COURSE.map((_, i) => i + 1))
   })
 
-  it('covers the whole period', () => {
-    const last = weekDates(COURSE.length)
-    expect(new Date(last.end) >= new Date(COURSE_END)).toBe(true)
+  it('finishes twenty weeks after whenever you start', () => {
+    expect(finishDate('2026-08-19')).toBe('2027-01-05')
+    expect(finishDate('2026-01-01')).toBe('2026-05-20')
   })
 
   it('only points at practice material that exists', () => {
@@ -48,35 +48,46 @@ describe('the course', () => {
 })
 
 describe('weekDates', () => {
-  it('starts week one on the start date', () => {
-    expect(weekDates(1).start).toBe('2026-08-19')
+  it('starts week one on whichever date you began', () => {
+    expect(weekDates(1, '2026-08-19').start).toBe('2026-08-19')
+    expect(weekDates(1, '2027-03-04').start).toBe('2027-03-04')
   })
 
   it('runs seven days per week, back to back', () => {
-    expect(weekDates(1).end).toBe('2026-08-25')
-    expect(weekDates(2).start).toBe('2026-08-26')
+    expect(weekDates(1, '2026-08-19').end).toBe('2026-08-25')
+    expect(weekDates(2, '2026-08-19').start).toBe('2026-08-26')
+  })
+
+  it('crosses a year boundary without losing a day', () => {
+    expect(weekDates(3, '2026-12-24').start).toBe('2027-01-07')
   })
 })
 
 describe('weekFor', () => {
-  it('finds the week a date falls in', () => {
-    expect(weekFor(new Date('2026-08-19'))?.week).toBe(1)
-    expect(weekFor(new Date('2026-08-25'))?.week).toBe(1)
-    expect(weekFor(new Date('2026-08-26'))?.week).toBe(2)
+  it('finds the week a date falls in, counted from that learner’s start', () => {
+    expect(weekFor(new Date(2026, 7, 19), '2026-08-19')?.week).toBe(1)
+    expect(weekFor(new Date(2026, 7, 25), '2026-08-19')?.week).toBe(1)
+    expect(weekFor(new Date(2026, 7, 26), '2026-08-19')?.week).toBe(2)
+  })
+
+  it('gives two learners who started on different days different weeks', () => {
+    const day = new Date(2026, 8, 30)
+    expect(weekFor(day, '2026-08-19')?.week).toBe(7)
+    expect(weekFor(day, '2026-09-23')?.week).toBe(2)
   })
 
   it('returns nothing before the course starts or after it ends', () => {
-    expect(weekFor(new Date('2026-08-01'))).toBeNull()
-    expect(weekFor(new Date('2027-03-01'))).toBeNull()
+    expect(weekFor(new Date(2026, 7, 1), '2026-08-19')).toBeNull()
+    expect(weekFor(new Date(2027, 2, 1), '2026-08-19')).toBeNull()
   })
 
   it('does not restart the count at a month boundary', () => {
-    expect(weekFor(new Date('2026-08-31'))!.week).toBe(2)
-    expect(weekFor(new Date('2026-09-01'))!.week).toBe(2)
+    expect(weekFor(new Date(2026, 7, 31), '2026-08-19')!.week).toBe(2)
+    expect(weekFor(new Date(2026, 8, 1), '2026-08-19')!.week).toBe(2)
   })
 
-  it('reaches the last week before the year ends', () => {
-    expect(weekFor(new Date('2026-12-31'))!.week).toBe(COURSE.length)
+  it('reaches the last week before the finish date', () => {
+    expect(weekFor(new Date(2026, 11, 31), '2026-08-19')!.week).toBe(COURSE.length)
   })
 })
 
@@ -87,14 +98,12 @@ describe('local dates, not UTC', () => {
   it('uses the calendar date the learner sees', () => {
     // 19 August 01:00 in a UTC+7 timezone is still 18 August in UTC.
     const earlyMorning = new Date(2026, 7, 19, 1, 0, 0)
-    expect(weekFor(earlyMorning)?.week).toBe(1)
+    expect(weekFor(earlyMorning, '2026-08-19')?.week).toBe(1)
   })
 
   it('is stable across the whole of a day', () => {
-    const start = weekFor(new Date(2026, 7, 19, 0, 1))?.week
-    const end = weekFor(new Date(2026, 7, 19, 23, 59))?.week
-    expect(start).toBe(1)
-    expect(end).toBe(1)
+    expect(weekFor(new Date(2026, 7, 19, 0, 1), '2026-08-19')?.week).toBe(1)
+    expect(weekFor(new Date(2026, 7, 19, 23, 59), '2026-08-19')?.week).toBe(1)
   })
 })
 
@@ -108,5 +117,26 @@ describe('weekStatus', () => {
   it('treats one week either way as on track, because days off happen', () => {
     expect(weekStatus(3, 4)).toBe('on track')
     expect(weekStatus(4, 3)).toBe('on track')
+  })
+})
+
+describe('pace against a target date', () => {
+  it('is comfortable when the target matches the twenty weeks', () => {
+    expect(pace('2026-08-19', '2027-01-05').weeksPerWeek).toBeCloseTo(1, 1)
+    expect(pace('2026-08-19', '2027-01-05').verdict).toBe('steady')
+  })
+
+  it('warns when the target leaves less time than the material needs', () => {
+    const p = pace('2026-08-19', '2026-10-14')
+    expect(p.weeksPerWeek).toBeGreaterThan(1.5)
+    expect(p.verdict).toBe('rushed')
+  })
+
+  it('is relaxed when there is plenty of time', () => {
+    expect(pace('2026-08-19', '2027-08-19').verdict).toBe('relaxed')
+  })
+
+  it('treats a target before the start as no target at all', () => {
+    expect(pace('2026-08-19', '2026-08-01').verdict).toBe('steady')
   })
 })
