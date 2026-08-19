@@ -1,5 +1,5 @@
 # --- build stage ---
-FROM golang:1.23-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 COPY . .
 # go.sum is generated here so we don't have to vendor it by hand.
