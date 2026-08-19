@@ -20,6 +20,11 @@ ENV API_INTERNAL_URL=$API_INTERNAL_URL
 # not read at runtime, so this has to arrive here too. Empty means no tag.
 ARG NEXT_PUBLIC_GA_ID=
 ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID
+# Canonical URLs, the sitemap and the share card all need to know where this
+# copy is served from. Nobody else's clone lives at the same address, so there
+# is no default worth baking in beyond localhost.
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

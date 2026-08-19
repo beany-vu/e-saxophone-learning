@@ -359,6 +359,7 @@ Read from `.env` by compose. See `.env.example`.
 | `JWT_SECRET` | dev-secret-change-me | **change for anything but local dev**: `openssl rand -base64 48` |
 | `CORS_ORIGIN` | http://localhost:3000 | only used for direct calls to port 8080 |
 | `COOKIE_SECURE` | false | production sets `true` so the session cookie is HTTPS-only |
+| `WEB_PUBLIC_URL` | empty | the public origin. Allowlisted by the API, and used for canonical URLs, the sitemap and the link preview card |
 | `ADMIN_EMAIL` | empty | the account that may manage other accounts, see [Users](#users) |
 | `GA_MEASUREMENT_ID` | empty | Google Analytics 4 id (`G-XXXXXXXXXX`). Empty means no analytics tag is served at all |
 
