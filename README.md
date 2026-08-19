@@ -355,6 +355,33 @@ Read from `.env` by compose. See `.env.example`.
 | `JWT_SECRET` | dev-secret-change-me | **change for anything but local dev**: `openssl rand -base64 48` |
 | `CORS_ORIGIN` | http://localhost:3000 | only used for direct calls to port 8080 |
 | `COOKIE_SECURE` | false | production sets `true` so the session cookie is HTTPS-only |
+| `ADMIN_EMAIL` | empty | the account that may manage other accounts, see [Users](#users) |
+
+Nothing personal is committed here. `ADMIN_EMAIL` is empty in this repository
+and in every default: a fresh clone has no admin until whoever runs it says
+otherwise.
+
+## Users
+
+One account can manage the others. It gets there through `ADMIN_EMAIL`, which
+is applied two ways so the order of events does not matter:
+
+* when the API starts, if an account with that address already exists
+* at signup, if it does not exist yet
+
+Either way that account sees a **Users** entry in the navigation, listing every
+account with how much it has practised, and can promote or demote an admin, set
+a password for someone locked out, and delete an account together with its
+practice history. Two things it cannot do: demote itself or delete itself. The
+page you would undo that from is the page you would lose.
+
+Leave `ADMIN_EMAIL` empty and the server simply has no admin, which is the
+right default for a copy that does not need one. To make the first admin by
+hand instead:
+
+```sql
+UPDATE users SET is_admin = true WHERE email = 'you@example.com';
+```
 
 ## Database
 
@@ -414,7 +441,11 @@ not in this repo.
 
 `POSTGRES_USER` and `POSTGRES_DB` are optional secrets; the compose file
 defaults to `yds` / `yds120`. `WEB_PUBLIC_URL` is an optional repository
-*variable* that overrides the CORS origin if the hostname changes.
+*variable* that sets the CORS origin for direct calls to the API hostname.
+
+`ADMIN_EMAIL` is an optional secret. It is not a credential, but this
+repository is public, and secrets are masked in the Actions logs anyone can
+read. Leave it unset and the server simply has no admin.
 
 **3. Register the runner.** Each repo on this box gets its own runner and its
 own systemd service. Grab a registration token from

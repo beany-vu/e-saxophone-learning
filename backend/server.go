@@ -16,32 +16,44 @@ type server struct {
 	// cookieSecure marks the session cookie Secure, so the browser only ever
 	// sends it over HTTPS. Off in local dev, which is plain http.
 	cookieSecure bool
+	// adminEmail is the address that gets the admin flag: at start-up if the
+	// account already exists, and at signup if it does not yet. Empty means
+	// no bootstrap admin.
+	adminEmail string
 }
 
 // route is one endpoint. Keeping them as data rather than as a run of
 // mux.HandleFunc calls means a test can compare the real routing table with
 // the OpenAPI document, so the documentation cannot quietly go stale.
 type route struct {
-	Method  string
-	Path    string
-	Auth    bool
+	Method string
+	Path   string
+	Auth   bool
+	// Admin routes are also Auth routes: the gate needs a user before it can
+	// ask what that user may do.
+	Admin   bool
 	handler http.HandlerFunc
 }
 
 // Routes is the whole API. Go 1.22+ lets the method go in the pattern.
 func (s *server) Routes() []route {
 	return []route{
-		{"GET", "/health", false, s.handleHealth},
-		{"GET", "/api/openapi.json", false, s.handleOpenAPI},
+		{"GET", "/health", false, false, s.handleHealth},
+		{"GET", "/api/openapi.json", false, false, s.handleOpenAPI},
 
-		{"POST", "/api/auth/signup", false, s.handleSignup},
-		{"POST", "/api/auth/login", false, s.handleLogin},
-		{"POST", "/api/auth/logout", false, s.handleLogout},
-		{"GET", "/api/auth/me", true, s.handleMe},
+		{"POST", "/api/auth/signup", false, false, s.handleSignup},
+		{"POST", "/api/auth/login", false, false, s.handleLogin},
+		{"POST", "/api/auth/logout", false, false, s.handleLogout},
+		{"GET", "/api/auth/me", true, false, s.handleMe},
 
-		{"POST", "/api/practice/sessions", true, s.handleCreateSession},
-		{"GET", "/api/practice/summary", true, s.handleSummary},
-		{"PUT", "/api/practice/course", true, s.handleSetCourse},
+		{"POST", "/api/practice/sessions", true, false, s.handleCreateSession},
+		{"GET", "/api/practice/summary", true, false, s.handleSummary},
+		{"PUT", "/api/practice/course", true, false, s.handleSetCourse},
+
+		{"GET", "/api/admin/users", true, true, s.handleListUsers},
+		{"PATCH", "/api/admin/users/{id}", true, true, s.handleSetUserAdmin},
+		{"DELETE", "/api/admin/users/{id}", true, true, s.handleDeleteUser},
+		{"PUT", "/api/admin/users/{id}/password", true, true, s.handleResetPassword},
 	}
 }
 
@@ -49,6 +61,9 @@ func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
 	for _, r := range s.Routes() {
 		handler := r.handler
+		if r.Admin {
+			handler = s.requireAdmin(handler)
+		}
 		if r.Auth {
 			handler = s.requireAuth(handler)
 		}
@@ -68,7 +83,7 @@ func (s *server) withMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Vary", "Origin")
 		}
 		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.WriteHeader(http.StatusNoContent)
 			return

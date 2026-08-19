@@ -46,3 +46,8 @@ CREATE TABLE IF NOT EXISTS note_stats (
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, midi_note)
 );
+
+-- Who may manage other accounts. Off for everyone by default: the first admin
+-- arrives through ADMIN_EMAIL at start-up, and every later one is promoted by
+-- an admin who is already there.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;

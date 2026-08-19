@@ -17,6 +17,10 @@ const LINKS: { href: string; key: StringKey }[] = [
   { href: '/settings', key: 'nav.settings' },
 ]
 
+// Shown only to admins. The API refuses the page's calls either way, so this
+// is about not offering a door that will not open.
+const ADMIN_LINKS: { href: string; key: StringKey }[] = [{ href: '/admin', key: 'nav.users' }]
+
 export default function Nav() {
   const path = usePathname()
   const { user, loading, logout } = useAuth()
@@ -30,7 +34,7 @@ export default function Nav() {
             e<span>-Saxophone</span>
           </div>
         </Link>
-        {LINKS.map((l) => (
+        {[...LINKS, ...(user?.isAdmin ? ADMIN_LINKS : [])].map((l) => (
           <Link key={l.href} href={l.href} className={`link${path === l.href ? ' active' : ''}`}>
             {t(l.key)}
           </Link>

@@ -6,19 +6,43 @@
     "description": "Accounts, practice sessions and course dates for the e-Saxophone practice tracker, made for the Yamaha YDS-120. Authentication is a JWT in an HttpOnly cookie called session, set by signup or login. The browser calls this API through the Next.js dev server at http://localhost:3000/api/*, which proxies to http://api:8080 over the compose network, so a browser client is same-origin and needs no CORS."
   },
   "servers": [
-    { "url": "http://localhost:3000", "description": "Through the web app, which is how the browser reaches it" },
-    { "url": "http://localhost:8080", "description": "The Go service directly" }
+    {
+      "url": "http://localhost:3000",
+      "description": "Through the web app, which is how the browser reaches it"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "The Go service directly"
+    }
   ],
   "tags": [
-    { "name": "health", "description": "Liveness" },
-    { "name": "auth", "description": "Accounts and the session cookie" },
-    { "name": "practice", "description": "Practice sessions, progress and course dates" },
-    { "name": "meta", "description": "This document" }
+    {
+      "name": "health",
+      "description": "Liveness"
+    },
+    {
+      "name": "auth",
+      "description": "Accounts and the session cookie"
+    },
+    {
+      "name": "practice",
+      "description": "Practice sessions, progress and course dates"
+    },
+    {
+      "name": "meta",
+      "description": "This document"
+    },
+    {
+      "name": "admin",
+      "description": "Managing accounts. Every endpoint here needs an admin session."
+    }
   ],
   "paths": {
     "/health": {
       "get": {
-        "tags": ["health"],
+        "tags": [
+          "health"
+        ],
         "summary": "Liveness check",
         "description": "Answers without touching the database, so it says the process is up rather than that everything works.",
         "responses": {
@@ -26,7 +50,15 @@
             "description": "The service is running",
             "content": {
               "application/json": {
-                "schema": { "type": "object", "properties": { "status": { "type": "string", "const": "ok" } } }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "ok"
+                    }
+                  }
+                }
               }
             }
           }
@@ -35,129 +67,532 @@
     },
     "/api/openapi.json": {
       "get": {
-        "tags": ["meta"],
+        "tags": [
+          "meta"
+        ],
         "summary": "This document",
         "description": "The OpenAPI description of this API. Served without a session so tooling can read it.",
-        "responses": { "200": { "description": "The OpenAPI document" } }
+        "responses": {
+          "200": {
+            "description": "The OpenAPI document"
+          }
+        }
       }
     },
     "/api/auth/signup": {
       "post": {
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "summary": "Create an account and log in",
         "description": "Creates the account, then sets the session cookie, so a new user does not have to log in separately. The password is stored as a bcrypt hash and is never returned.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/Credentials" }
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
             }
           }
         },
         "responses": {
           "201": {
             "description": "Account created, session cookie set",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
           },
-          "400": { "description": "Missing or short password, or a malformed body" },
-          "409": { "description": "That email already has an account" }
+          "400": {
+            "description": "Missing or short password, or a malformed body"
+          },
+          "409": {
+            "description": "That email already has an account"
+          }
         }
       }
     },
     "/api/auth/login": {
       "post": {
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "summary": "Log in and set the session cookie",
         "description": "The cookie is HttpOnly and SameSite=Lax. It is not marked Secure, which is correct over plain HTTP on localhost and must change under HTTPS.",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Credentials" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "Logged in",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
           },
-          "401": { "description": "Wrong email or password. Both failures answer the same way on purpose" }
+          "401": {
+            "description": "Wrong email or password. Both failures answer the same way on purpose"
+          }
         }
       }
     },
     "/api/auth/logout": {
       "post": {
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "summary": "Clear the session cookie",
         "description": "Expires the cookie. Succeeds whether or not anyone was logged in.",
-        "responses": { "200": { "description": "Cookie expired" } }
+        "responses": {
+          "200": {
+            "description": "Cookie expired"
+          }
+        }
       }
     },
     "/api/auth/me": {
       "get": {
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "summary": "Who the session belongs to",
         "description": "Also carries this learner's course dates, since the app needs them on every page and this call already happens on every page.",
-        "security": [{ "sessionCookie": [] }],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "The signed-in user",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
           },
-          "401": { "description": "No session, or a token that does not verify" }
+          "401": {
+            "description": "No session, or a token that does not verify"
+          }
         }
       }
     },
     "/api/practice/sessions": {
       "post": {
-        "tags": ["practice"],
+        "tags": [
+          "practice"
+        ],
         "summary": "Save one practice session",
         "description": "Writes the session and rolls its per-note counts into the lifetime totals in a single transaction, so the two can never disagree. Note keys outside 0 to 127, or counts of zero or less, are ignored rather than rejected: a bad key should not lose the rest of a practice session.",
-        "security": [{ "sessionCookie": [] }],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionInput" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionInput"
+              }
+            }
+          }
         },
         "responses": {
           "201": {
             "description": "Saved",
             "content": {
               "application/json": {
-                "schema": { "type": "object", "properties": { "id": { "type": "string", "format": "uuid" } } }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
               }
             }
           },
-          "400": { "description": "Malformed body" },
-          "401": { "description": "No session" }
+          "400": {
+            "description": "Malformed body"
+          },
+          "401": {
+            "description": "No session"
+          }
         }
       }
     },
     "/api/practice/summary": {
       "get": {
-        "tags": ["practice"],
+        "tags": [
+          "practice"
+        ],
         "summary": "Everything the Progress page needs",
         "description": "Lifetime totals, per-note counts for the coverage heatmap, the last ten sessions, and per-item statistics. Item accuracy is the best single attempt rather than an average, so practising something badly on purpose cannot lower it.",
-        "security": [{ "sessionCookie": [] }],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "The summary",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Summary" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
           },
-          "401": { "description": "No session" }
+          "401": {
+            "description": "No session"
+          }
         }
       }
     },
     "/api/practice/course": {
       "put": {
-        "tags": ["practice"],
+        "tags": [
+          "practice"
+        ],
         "summary": "Set when this learner starts and wants to finish",
         "description": "Both dates are per account, so two learners who began on different days are not marched through the same calendar. Send empty strings to clear them. The target date is advisory: the course is twenty weeks of material whatever date is chosen.",
-        "security": [{ "sessionCookie": [] }],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CourseDates" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseDates"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Saved" },
-          "400": { "description": "A date that is not yyyy-mm-dd, or a target on or before the start" },
-          "401": { "description": "No session" }
+          "200": {
+            "description": "Saved"
+          },
+          "400": {
+            "description": "A date that is not yyyy-mm-dd, or a target on or before the start"
+          },
+          "401": {
+            "description": "No session"
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List every account, with its practice totals",
+        "description": "Admins only. Returns all accounts so an admin can see who has signed up, how much they have practised, and who else is an admin. Password hashes are never included.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminUser"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Promote or demote one account",
+        "description": "Admins only. Sets the admin flag on another account. Removing your own is refused: the page you would undo it from is the page you would lose.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The account being managed."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminFlag"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The account's new state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminFlag"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete one account and everything it owns",
+        "description": "Admins only. Removes the account together with its practice sessions and note statistics. There is no undo. Deleting your own account here is refused.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The account being managed."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/password": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Set a new password for a locked-out account",
+        "description": "Admins only. There is no email round trip: the admin hands the new password to its owner. Held to the same eight character minimum as signup.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The account being managed."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -174,85 +609,256 @@
     "schemas": {
       "Credentials": {
         "type": "object",
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "properties": {
-          "email": { "type": "string", "format": "email" },
-          "password": { "type": "string", "minLength": 8, "description": "At least 8 characters" },
-          "displayName": { "type": "string", "description": "Signup only, optional" }
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "At least 8 characters"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Signup only, optional"
+          }
         }
       },
       "User": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "email": { "type": "string", "format": "email" },
-          "displayName": { "type": "string" },
-          "courseStart": { "type": "string", "description": "yyyy-mm-dd, empty until chosen" },
-          "courseTargetEnd": { "type": "string", "description": "yyyy-mm-dd, empty until chosen" },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "courseStart": {
+            "type": "string",
+            "description": "yyyy-mm-dd, empty until chosen"
+          },
+          "courseTargetEnd": {
+            "type": "string",
+            "description": "yyyy-mm-dd, empty until chosen"
+          },
           "courseWeeksDone": {
             "type": "array",
-            "items": { "type": "integer" },
+            "items": {
+              "type": "integer"
+            },
             "description": "Week numbers this learner has ticked off, ascending"
+          },
+          "isAdmin": {
+            "type": "boolean",
+            "description": "Whether this account may manage other accounts."
           }
         }
       },
       "SessionInput": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "monitor, exercise, warmup or song", "default": "monitor" },
-          "item": { "type": "string", "description": "Which warm-up or song, empty for free playing" },
-          "durationSeconds": { "type": "integer", "minimum": 0 },
-          "notesPlayed": { "type": "integer", "minimum": 0 },
-          "correctNotes": { "type": "integer", "minimum": 0 },
-          "wrongNotes": { "type": "integer", "minimum": 0 },
+          "source": {
+            "type": "string",
+            "description": "monitor, exercise, warmup or song",
+            "default": "monitor"
+          },
+          "item": {
+            "type": "string",
+            "description": "Which warm-up or song, empty for free playing"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notesPlayed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "correctNotes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "wrongNotes": {
+            "type": "integer",
+            "minimum": 0
+          },
           "noteCounts": {
             "type": "object",
             "description": "MIDI note number as a string key, to how many times it was played",
-            "additionalProperties": { "type": "integer" }
+            "additionalProperties": {
+              "type": "integer"
+            }
           }
         }
       },
       "SessionBrief": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "source": { "type": "string" },
-          "durationSeconds": { "type": "integer" },
-          "notesPlayed": { "type": "integer" },
-          "startedAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "integer"
+          },
+          "notesPlayed": {
+            "type": "integer"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ItemStat": {
         "type": "object",
         "properties": {
-          "item": { "type": "string" },
-          "source": { "type": "string" },
-          "timesPlayed": { "type": "integer" },
-          "bestAccuracy": { "type": "integer", "description": "Percent, from the best single attempt" },
-          "totalSeconds": { "type": "integer" },
-          "lastPlayedAt": { "type": "string", "format": "date-time" }
+          "item": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "timesPlayed": {
+            "type": "integer"
+          },
+          "bestAccuracy": {
+            "type": "integer",
+            "description": "Percent, from the best single attempt"
+          },
+          "totalSeconds": {
+            "type": "integer"
+          },
+          "lastPlayedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "Summary": {
         "type": "object",
         "properties": {
-          "totalSessions": { "type": "integer" },
-          "totalNotes": { "type": "integer" },
-          "totalSeconds": { "type": "integer" },
-          "noteCounts": { "type": "object", "additionalProperties": { "type": "integer" } },
-          "recentSessions": { "type": "array", "items": { "$ref": "#/components/schemas/SessionBrief" } },
-          "itemStats": { "type": "array", "items": { "$ref": "#/components/schemas/ItemStat" } }
+          "totalSessions": {
+            "type": "integer"
+          },
+          "totalNotes": {
+            "type": "integer"
+          },
+          "totalSeconds": {
+            "type": "integer"
+          },
+          "noteCounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "recentSessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionBrief"
+            }
+          },
+          "itemStats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemStat"
+            }
+          }
         }
       },
       "CourseDates": {
         "type": "object",
         "properties": {
-          "startDate": { "type": "string", "description": "yyyy-mm-dd, or empty to clear" },
-          "targetEnd": { "type": "string", "description": "yyyy-mm-dd, or empty to clear" },
+          "startDate": {
+            "type": "string",
+            "description": "yyyy-mm-dd, or empty to clear"
+          },
+          "targetEnd": {
+            "type": "string",
+            "description": "yyyy-mm-dd, or empty to clear"
+          },
           "weeksDone": {
             "type": "array",
-            "items": { "type": "integer", "minimum": 1, "maximum": 20 },
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
             "description": "Weeks ticked off. Omit to leave them alone; send a shorter list to untick. Numbers outside the course, and duplicates, are dropped rather than rejected"
+          }
+        }
+      },
+      "AdminUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isAdmin": {
+            "type": "boolean",
+            "description": "Whether this account may manage other accounts."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sessions": {
+            "type": "integer",
+            "description": "How many practice sessions have been saved."
+          },
+          "notesPlayed": {
+            "type": "integer"
+          },
+          "correctNotes": {
+            "type": "integer"
+          },
+          "secondsPractised": {
+            "type": "integer"
+          },
+          "lastPracticedAt": {
+            "type": "string",
+            "description": "Empty when they have never saved a session."
+          }
+        }
+      },
+      "AdminFlag": {
+        "type": "object",
+        "required": [
+          "isAdmin"
+        ],
+        "properties": {
+          "isAdmin": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
           }
         }
       }

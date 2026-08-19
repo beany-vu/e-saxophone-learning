@@ -16,6 +16,9 @@ func main() {
 	port := getenv("PORT", "8080")
 	corsOrigin := getenv("CORS_ORIGIN", "http://localhost:3000")
 	cookieSecure := getenv("COOKIE_SECURE", "false") == "true"
+	// Who to hand the keys to on a fresh database. Optional: without it the
+	// stack still runs, it just has no admin until one is made by hand.
+	adminEmail := os.Getenv("ADMIN_EMAIL")
 
 	pool, err := connectWithRetry(ctx, dbURL, 15)
 	if err != nil {
@@ -28,11 +31,16 @@ func main() {
 	}
 	log.Println("database ready, schema applied")
 
+	if err := promoteAdmin(ctx, pool, adminEmail); err != nil {
+		log.Fatalf("admin bootstrap: %v", err)
+	}
+
 	s := &server{
 		db:           pool,
 		jwtSecret:    []byte(jwtSecret),
 		corsOrigin:   corsOrigin,
 		cookieSecure: cookieSecure,
+		adminEmail:   adminEmail,
 	}
 
 	srv := &http.Server{

@@ -11,6 +11,23 @@ export type User = {
   courseTargetEnd: string
   /** Weeks of the course ticked off, ascending. */
   courseWeeksDone: number[]
+  /** Whether this account may manage other accounts. */
+  isAdmin: boolean
+}
+
+/** One row of the user list, which only admins can fetch. */
+export type AdminUser = {
+  id: string
+  email: string
+  displayName: string
+  isAdmin: boolean
+  createdAt: string
+  sessions: number
+  notesPlayed: number
+  correctNotes: number
+  secondsPractised: number
+  /** Empty when they have never saved a session. */
+  lastPracticedAt: string
 }
 
 export type SessionBrief = {
@@ -98,5 +115,24 @@ export const api = {
     request<{ id: string }>('/api/practice/sessions', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  // ---- Admin. Every one of these 403s for an ordinary account. ----
+
+  listUsers: () => request<{ users: AdminUser[] }>('/api/admin/users'),
+
+  setUserAdmin: (id: string, isAdmin: boolean) =>
+    request<{ id: string; isAdmin: boolean }>(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isAdmin }),
+    }),
+
+  deleteUser: (id: string) =>
+    request<{ status: string }>(`/api/admin/users/${id}`, { method: 'DELETE' }),
+
+  setUserPassword: (id: string, password: string) =>
+    request<{ status: string }>(`/api/admin/users/${id}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
     }),
 }
