@@ -329,4 +329,14 @@ export const fr: Record<StringKey, string> = {
   'admin.promoted': '{email} est maintenant admin.',
   'admin.demoted': '{email} n’est plus admin.',
   'common.cancel': 'Annuler',
+
+  // ---- Jouer en mesure ----
+  'learn.playInTime': 'Jouer en mesure',
+  'learn.playInTimeHint': 'La barre parcourt la ligne au tempo choisi. Jouez chaque note a son passage. Si vous la manquez, la barre s’arrete et attend.',
+  'learn.waitingFor': 'En attente de {note}',
+  'learn.tooEarly': 'Un peu en avance.',
+  'learn.tooLate': 'Un peu en retard.',
+  'learn.rightOnTime': 'Pile sur le temps.',
+  'learn.onTime': 'Dans le temps',
+  'learn.stalls': 'Attentes',
 }

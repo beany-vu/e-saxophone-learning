@@ -15,6 +15,8 @@ type createSessionRequest struct {
 	NotesPlayed     int            `json:"notesPlayed"`     // total note-on events
 	CorrectNotes    int            `json:"correctNotes"`    // notes matching what was asked for
 	WrongNotes      int            `json:"wrongNotes"`      // notes that did not
+	Stalls          int            `json:"stalls"`          // times the bar waited, playing in time
+	OnTimeNotes     int            `json:"onTimeNotes"`     // notes inside the timing window
 	NoteCounts      map[string]int `json:"noteCounts"`      // midiNote (as string key) -> count
 }
 
@@ -43,9 +45,11 @@ func (s *server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	var sessionID string
 	err = tx.QueryRow(r.Context(),
 		`INSERT INTO practice_sessions
-		   (user_id, source, item, duration_seconds, notes_played, correct_notes, wrong_notes)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		   (user_id, source, item, duration_seconds, notes_played, correct_notes, wrong_notes,
+		    stalls, on_time_notes)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
 		uid, req.Source, req.Item, req.DurationSeconds, req.NotesPlayed, req.CorrectNotes, req.WrongNotes,
+		req.Stalls, req.OnTimeNotes,
 	).Scan(&sessionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not save session")

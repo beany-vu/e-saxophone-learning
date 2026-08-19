@@ -110,6 +110,10 @@ export const api = {
     notesPlayed: number
     correctNotes?: number
     wrongNotes?: number
+    /** Times the bar had to wait, when the run was played in time. */
+    stalls?: number
+    /** Notes that landed inside the timing window. */
+    onTimeNotes?: number
     noteCounts: Record<string, number>
   }) =>
     request<{ id: string }>('/api/practice/sessions', {

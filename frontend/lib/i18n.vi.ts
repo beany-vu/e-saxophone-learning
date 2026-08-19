@@ -317,4 +317,14 @@ export const vi: Record<StringKey, string> = {
   'admin.promoted': '{email} giờ là quản trị viên.',
   'admin.demoted': '{email} không còn là quản trị viên.',
   'common.cancel': 'Hủy',
+
+  // ---- Chơi đúng nhịp ----
+  'learn.playInTime': 'Chơi đúng nhịp',
+  'learn.playInTimeHint': 'Vạch chạy dọc dòng nhạc theo nhịp độ. Hãy thổi mỗi nốt khi vạch tới. Nếu trượt, vạch sẽ dừng lại chờ bạn.',
+  'learn.waitingFor': 'Đang chờ nốt {note}',
+  'learn.tooEarly': 'Hơi sớm một chút.',
+  'learn.tooLate': 'Hơi trễ một chút.',
+  'learn.rightOnTime': 'Đúng ngay phách.',
+  'learn.onTime': 'Đúng nhịp',
+  'learn.stalls': 'Lần chờ',
 }

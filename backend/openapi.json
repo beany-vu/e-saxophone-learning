@@ -698,6 +698,14 @@
             "additionalProperties": {
               "type": "integer"
             }
+          },
+          "stalls": {
+            "type": "integer",
+            "description": "Times the bar had to stop and wait for a note, when the run was played in time. Zero otherwise."
+          },
+          "onTimeNotes": {
+            "type": "integer",
+            "description": "Notes that landed inside the timing window, when the run was played in time."
           }
         }
       },

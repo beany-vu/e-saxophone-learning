@@ -329,6 +329,16 @@ export const en = {
   'admin.promoted': '{email} is now an admin.',
   'admin.demoted': '{email} is no longer an admin.',
   'common.cancel': 'Cancel',
+
+  // ---- Playing in time ----
+  'learn.playInTime': 'Play in time',
+  'learn.playInTimeHint': 'The bar travels the line at the tempo. Play each note as it arrives. Miss one and the bar waits there until you get it.',
+  'learn.waitingFor': 'Waiting for {note}',
+  'learn.tooEarly': 'A little early.',
+  'learn.tooLate': 'A little late.',
+  'learn.rightOnTime': 'Right on the beat.',
+  'learn.onTime': 'On time',
+  'learn.stalls': 'Waits',
 } as const
 
 export type StringKey = keyof typeof en

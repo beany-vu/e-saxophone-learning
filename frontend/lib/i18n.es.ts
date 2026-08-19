@@ -317,4 +317,14 @@ export const es: Record<StringKey, string> = {
   'admin.promoted': '{email} ya es administrador.',
   'admin.demoted': '{email} ya no es administrador.',
   'common.cancel': 'Cancelar',
+
+  // ---- Tocar a tiempo ----
+  'learn.playInTime': 'Tocar a tiempo',
+  'learn.playInTimeHint': 'La barra recorre la línea al tempo elegido. Toca cada nota cuando llegue. Si la fallas, la barra se detiene y te espera.',
+  'learn.waitingFor': 'Esperando {note}',
+  'learn.tooEarly': 'Un poco pronto.',
+  'learn.tooLate': 'Un poco tarde.',
+  'learn.rightOnTime': 'Justo en el tiempo.',
+  'learn.onTime': 'A tiempo',
+  'learn.stalls': 'Esperas',
 }
