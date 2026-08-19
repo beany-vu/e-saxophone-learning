@@ -27,7 +27,7 @@ export default function Nav() {
       <div className="inner">
         <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="brand">
-            YDS<span>-120</span>
+            e<span>-Saxophone</span>
           </div>
         </Link>
         {LINKS.map((l) => (

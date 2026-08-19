@@ -1,3 +1,7 @@
+# The project name decides the container and volume names. Pinned so a
+# directory rename does not silently start a fresh, empty database.
+name: e-saxophone-learning
+
 services:
   db:
     image: postgres:16-alpine

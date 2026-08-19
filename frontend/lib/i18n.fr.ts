@@ -32,7 +32,7 @@ export const fr: Record<StringKey, string> = {
   'common.saving': 'Enregistrement...',
   'common.playing': 'En cours...',
 
-  'home.title': 'Suivi de pratique YDS-120',
+  'home.title': 'Suivi de pratique e-Saxophone',
   'home.intro':
     'Un cours, un tableau de doigtes et une oreille pour le Yamaha YDS-120. L’application entend ce que vous jouez, par le cable USB ou par le microphone, et conserve votre historique de pratique.',
   'home.startHere': 'Commencer ici',

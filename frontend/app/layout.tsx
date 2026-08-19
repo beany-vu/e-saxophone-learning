@@ -6,8 +6,8 @@ import { I18nProvider } from '@/lib/i18n-context'
 import Nav from '@/components/Nav'
 
 export const metadata: Metadata = {
-  title: 'YDS-120 Practice',
-  description: 'Live MIDI practice tracking for the Yamaha YDS-120 digital saxophone',
+  title: 'e-Saxophone Practice',
+  description: 'Practice tracking for digital saxophones, made for the Yamaha YDS-120',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

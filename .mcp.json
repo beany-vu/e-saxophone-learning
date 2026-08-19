@@ -1,11 +1,11 @@
 {
   "mcpServers": {
-    "yds120": {
+    "e-saxophone": {
       "command": "docker",
       "args": [
         "compose",
         "-f",
-        "/home/beany/projects/yds120-learning/docker-compose.yml",
+        "/home/beany/projects/e-saxophone-learning/docker-compose.yml",
         "run",
         "--rm",
         "-T",

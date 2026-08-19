@@ -34,7 +34,7 @@ export const en = {
   'common.playing': 'Playing...',
 
   // Home
-  'home.title': 'YDS-120 practice tracker',
+  'home.title': 'e-Saxophone practice tracker',
   'home.intro':
     'A course, a fingering chart and a listener for the Yamaha YDS-120. The app hears what you play, over the USB cable or through the microphone, and keeps your practice history.',
   'home.startHere': 'Start here',

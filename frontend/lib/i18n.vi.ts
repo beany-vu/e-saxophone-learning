@@ -30,7 +30,7 @@ export const vi: Record<StringKey, string> = {
   'common.saved': 'đã lưu',
   'common.saving': 'Đang lưu...',
   'common.playing': 'Đang chơi...',
-  'home.title': 'Nhật ký luyện tập YDS-120',
+  'home.title': 'Nhật ký luyện tập e-Saxophone',
   'home.intro': 'Một khoá học, một bảng thế bấm và một đôi tai cho cây Yamaha YDS-120. Ứng dụng nghe những gì bạn thổi, qua cáp USB hoặc qua micro, và lưu lại lịch sử luyện tập.',
   'home.startHere': 'Bắt đầu ở đây',
   'home.step1': 'Thiết lập đầu vào trong Màn hình: cáp USB cần chế độ điều khiển MIDI trên nhạc cụ, hoặc dùng micro mà không cần cáp nào cả',

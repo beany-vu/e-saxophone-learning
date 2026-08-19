@@ -30,7 +30,7 @@ export const es: Record<StringKey, string> = {
   'common.saved': 'guardado',
   'common.saving': 'Guardando...',
   'common.playing': 'Sonando...',
-  'home.title': 'Registro de práctica YDS-120',
+  'home.title': 'Registro de práctica e-Saxophone',
   'home.intro': 'Un curso, una tabla de digitaciones y un oído para el Yamaha YDS-120. La aplicación escucha lo que tocas, por el cable USB o por el micrófono, y guarda tu historial de práctica.',
   'home.startHere': 'Empieza aquí',
   'home.step1': 'Configura una entrada en el Monitor: el cable USB necesita el modo controlador MIDI en el instrumento, o usa el micrófono y ningún cable',

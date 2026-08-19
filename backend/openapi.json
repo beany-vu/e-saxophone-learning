@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "YDS-120 practice API",
+    "title": "e-Saxophone practice API",
     "version": "1.0.0",
-    "description": "Accounts, practice sessions and course dates for the YDS-120 practice tracker. Authentication is a JWT in an HttpOnly cookie called session, set by signup or login. The browser calls this API through the Next.js dev server at http://localhost:3000/api/*, which proxies to http://api:8080 over the compose network, so a browser client is same-origin and needs no CORS."
+    "description": "Accounts, practice sessions and course dates for the e-Saxophone practice tracker, made for the Yamaha YDS-120. Authentication is a JWT in an HttpOnly cookie called session, set by signup or login. The browser calls this API through the Next.js dev server at http://localhost:3000/api/*, which proxies to http://api:8080 over the compose network, so a browser client is same-origin and needs no CORS."
   },
   "servers": [
     { "url": "http://localhost:3000", "description": "Through the web app, which is how the browser reaches it" },

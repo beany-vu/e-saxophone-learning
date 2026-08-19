@@ -1,4 +1,4 @@
-module yds120-api
+module e-saxophone-api
 
 go 1.23
 

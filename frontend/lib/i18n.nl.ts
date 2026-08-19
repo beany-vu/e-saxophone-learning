@@ -30,7 +30,7 @@ export const nl: Record<StringKey, string> = {
   'common.saved': 'opgeslagen',
   'common.saving': 'Opslaan...',
   'common.playing': 'Bezig...',
-  'home.title': 'YDS-120 oefenlogboek',
+  'home.title': 'e-Saxophone oefenlogboek',
   'home.intro': 'Een cursus, een grepentabel en een luisterend oor voor de Yamaha YDS-120. De app hoort wat je speelt, via de USB-kabel of via de microfoon, en bewaart je oefengeschiedenis.',
   'home.startHere': 'Begin hier',
   'home.step1': 'Stel een ingang in op de Monitor: de USB-kabel vraagt om de MIDI-controllerstand op het instrument, of gebruik de microfoon en helemaal geen kabel',

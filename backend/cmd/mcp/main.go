@@ -352,7 +352,7 @@ func handle(c *client, req request) *response {
 		return reply(map[string]any{
 			"protocolVersion": protocolVersion,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"serverInfo":      map[string]any{"name": "yds120-practice", "version": "1.0.0"},
+			"serverInfo":      map[string]any{"name": "e-saxophone-practice", "version": "1.0.0"},
 		})
 
 	case "notifications/initialized":
@@ -433,14 +433,14 @@ func main() {
 		if err := c.login(email, password); err != nil {
 			// Logged to stderr, never stdout: stdout is the protocol channel
 			// and anything else on it breaks the connection.
-			fmt.Fprintln(os.Stderr, "yds120 mcp: "+err.Error())
+			fmt.Fprintln(os.Stderr, "e-saxophone mcp: "+err.Error())
 		}
 	} else {
-		fmt.Fprintln(os.Stderr, "yds120 mcp: set YDS_EMAIL and YDS_PASSWORD to read your practice")
+		fmt.Fprintln(os.Stderr, "e-saxophone mcp: set YDS_EMAIL and YDS_PASSWORD to read your practice")
 	}
 
 	if err := serve(c, os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "yds120 mcp:", err)
+		fmt.Fprintln(os.Stderr, "e-saxophone mcp:", err)
 		os.Exit(1)
 	}
 }

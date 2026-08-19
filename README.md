@@ -1,6 +1,8 @@
-# YDS-120 Practice Tracker
+# e-Saxophone Learning
 
-A practice tool for the Yamaha YDS-120 digital saxophone. The browser listens to
+A practice tool for digital saxophones, built for and tested on the Yamaha
+YDS-120. Not affiliated with, endorsed by, or connected to Yamaha; the
+instrument is named here only to say what the app works with. The browser listens to
 every note you play, shows it live, and saves your history to your account.
 
 Two ways in, switchable on the monitor page:
