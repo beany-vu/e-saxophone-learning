@@ -5,7 +5,7 @@
 // The songs are traditional or long out of copyright. Anything else you want
 // to practise goes in through the custom melody box, which uses `parseMelody`.
 
-import { FINGERING_HIGH, FINGERING_LOW } from '@/lib/fingerings'
+import { INSTRUMENT_HIGH, INSTRUMENT_LOW } from '@/lib/fingerings'
 import { NOTE_NAMES, noteName } from '@/lib/notes'
 
 /** One line of a tune: where it starts and stops, and what to call it. */
@@ -490,7 +490,7 @@ export function parseMelody(
       // Transpose first, then range check: a note can be outside the
       // instrument's range as written on a piano part and inside it once
       // converted, which is the whole point of converting.
-      if (midi < FINGERING_LOW || midi > FINGERING_HIGH) {
+      if (midi < INSTRUMENT_LOW || midi > INSTRUMENT_HIGH) {
         errors.push(token)
         return
       }
@@ -579,7 +579,7 @@ export function parseNumbers(text: string, tonic: number): { notes: number[]; er
       if (marks.startsWith("'")) midi += 12 * marks.length
       else if (marks.startsWith(',')) midi -= 12 * marks.length
 
-      if (midi < FINGERING_LOW || midi > FINGERING_HIGH) {
+      if (midi < INSTRUMENT_LOW || midi > INSTRUMENT_HIGH) {
         errors.push(token)
         return
       }
@@ -602,14 +602,14 @@ export function fitToRange(notes: number[]): { notes: number[]; octaves: number 
 
   const low = Math.min(...notes)
   const high = Math.max(...notes)
-  if (high - low > FINGERING_HIGH - FINGERING_LOW) return { notes, octaves: 0 }
+  if (high - low > INSTRUMENT_HIGH - INSTRUMENT_LOW) return { notes, octaves: 0 }
 
   let octaves = 0
-  while (low + octaves * 12 < FINGERING_LOW) octaves += 1
-  while (high + octaves * 12 > FINGERING_HIGH) octaves -= 1
+  while (low + octaves * 12 < INSTRUMENT_LOW) octaves += 1
+  while (high + octaves * 12 > INSTRUMENT_HIGH) octaves -= 1
 
   // If shifting to fit the top pushed the bottom out, it cannot be fitted.
-  if (low + octaves * 12 < FINGERING_LOW) return { notes, octaves: 0 }
+  if (low + octaves * 12 < INSTRUMENT_LOW) return { notes, octaves: 0 }
 
   return { notes: notes.map((n) => n + octaves * 12), octaves }
 }

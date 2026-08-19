@@ -17,7 +17,7 @@ import {
   totalBeats,
   type ComposedNote,
 } from '@/lib/compose'
-import { FINGERING_HIGH, FINGERING_LOW } from '@/lib/fingerings'
+import { FINGERING_HIGH, FINGERING_LOW, INSTRUMENT_HIGH, INSTRUMENT_LOW } from '@/lib/fingerings'
 import { toConcert } from '@/lib/notes'
 import type { StringKey } from '@/lib/i18n'
 
@@ -229,17 +229,26 @@ export default function ComposePage() {
       </div>
 
       <div className="panel">
-        <Piano
-          active={[]}
-          low={FINGERING_LOW}
-          high={FINGERING_HIGH}
-          onPress={press}
-        />
+        <Piano active={[]} low={INSTRUMENT_LOW} high={INSTRUMENT_HIGH} onPress={press} />
         <p className="muted" style={{ fontSize: 13, marginTop: 10, marginBottom: 0 }}>
-          {t('compose.keyboardRange')} {n(FINGERING_LOW)} to {n(FINGERING_HIGH)}, sounding{' '}
-          {n(toConcert(FINGERING_LOW, input.voice.semitones))} to{' '}
-          {n(toConcert(FINGERING_HIGH, input.voice.semitones))}.
+          {t('compose.fullRange', {
+            low: n(INSTRUMENT_LOW),
+            high: n(INSTRUMENT_HIGH),
+            lowSounding: n(toConcert(INSTRUMENT_LOW, input.voice.semitones)),
+            highSounding: n(toConcert(INSTRUMENT_HIGH, input.voice.semitones)),
+          })}
         </p>
+        {notes.some((x) => x.midi < FINGERING_LOW || x.midi > FINGERING_HIGH) && (
+          <p style={{ color: 'var(--warn)', fontSize: 13, margin: '6px 0 0' }}>
+            {t('compose.noFingering', {
+              notes: [...new Set(notes.map((x) => x.midi))]
+                .filter((m) => m < FINGERING_LOW || m > FINGERING_HIGH)
+                .sort((a, b) => a - b)
+                .map((m) => n(m))
+                .join(' '),
+            })}
+          </p>
+        )}
       </div>
 
       <div className="panel">

@@ -279,4 +279,6 @@ export const es: Record<StringKey, string> = {
   'compose.nameIt': 'Ponle nombre a tu melodía',
   'compose.playAsYouGo': 'Tocar cada nota al hacer clic',
   'compose.keyboardRange': 'Las teclas con las que puedes escribir son las que el instrumento puede tocar.',
+  'compose.fullRange': 'Todo el instrumento: de {low} a {high} en altura escrita, sonando de {lowSounding} a {highSounding}. Algo menos de tres octavas, más amplio que un alto acústico por ambos extremos.',
+  'compose.noFingering': 'Estas notas quedan fuera de la tabla de digitaciones, así que el entrenador no te mostrará una posición para ellas: {notes}. El instrumento las toca; la tabla del manual las tiene y aún no he transcrito esos diagramas.',
 }

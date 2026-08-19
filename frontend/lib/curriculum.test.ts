@@ -11,7 +11,13 @@ import {
   fitToRange,
   parseNumbers,
 } from '@/lib/curriculum'
-import { fingeringFor, FINGERING_LOW, FINGERING_HIGH } from '@/lib/fingerings'
+import {
+  fingeringFor,
+  FINGERING_LOW,
+  FINGERING_HIGH,
+  INSTRUMENT_LOW,
+  INSTRUMENT_HIGH,
+} from '@/lib/fingerings'
 import { noteName } from '@/lib/notes'
 
 describe('the built in material', () => {
@@ -298,5 +304,32 @@ describe('number notation, as used on kalimba tabs', () => {
     const out = parseMelodyScript('Intro: 1 2 3\nMain: 5 6 5', 0, { numbers: true, tonic: C5 })
     expect(out.notes).toEqual([72, 74, 76, 79, 81, 79])
     expect(out.phrases.map((p) => p.label)).toEqual(['Intro', 'Main'])
+  })
+})
+
+describe('the instrument range versus the fingering chart', () => {
+  // Two different things, deliberately. The instrument plays low A up to high
+  // F#; the fingering chart covers Bb3 to C#6, because six of those diagrams
+  // are not transcribed. You can write the notes either way; the chart simply
+  // has nothing to show for six of them.
+  it('accepts the notes at the very edges of the instrument', () => {
+    expect(parseMelody('A3').notes).toEqual([INSTRUMENT_LOW])
+    expect(parseMelody('F#6').notes).toEqual([INSTRUMENT_HIGH])
+  })
+
+  it('still rejects notes the instrument cannot play', () => {
+    expect(parseMelody('G#3').errors).toEqual(['G#3'])
+    expect(parseMelody('G6').errors).toEqual(['G6'])
+  })
+
+  it('fits a melody into the instrument, not just into the chart', () => {
+    // A tune spanning the full instrument fits; the chart alone could not hold it.
+    const wide = [INSTRUMENT_LOW, INSTRUMENT_HIGH]
+    expect(fitToRange(wide)).toEqual({ notes: wide, octaves: 0 })
+  })
+
+  it('has a chart narrower than the instrument, and knows by how much', () => {
+    expect(FINGERING_LOW - INSTRUMENT_LOW).toBe(1)
+    expect(INSTRUMENT_HIGH - FINGERING_HIGH).toBe(5)
   })
 })

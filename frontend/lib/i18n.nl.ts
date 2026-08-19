@@ -279,4 +279,6 @@ export const nl: Record<StringKey, string> = {
   'compose.nameIt': 'Geef je melodie een naam',
   'compose.playAsYouGo': 'Speel elke noot terwijl ik klik',
   'compose.keyboardRange': 'De toetsen waarmee je kunt schrijven zijn die het instrument kan spelen.',
+  'compose.fullRange': 'Het hele instrument: {low} tot {high} geschreven, klinkend van {lowSounding} tot {highSounding}. Net geen drie octaven, aan beide kanten ruimer dan een akoestische alt.',
+  'compose.noFingering': 'Deze noten vallen buiten de grepentabel, dus de trainer laat er geen greep voor zien: {notes}. Het instrument speelt ze wel; de tabel in de handleiding heeft ze en ik heb die diagrammen nog niet overgenomen.',
 }

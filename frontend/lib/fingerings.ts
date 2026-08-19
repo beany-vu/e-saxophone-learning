@@ -59,7 +59,25 @@ export const SAX_KEYS: SaxKeyInfo[] = [
 export type Alternate = { label: string; keys: SaxKeyId[] }
 export type Fingering = { keys: SaxKeyId[]; alternates?: Alternate[] }
 
-/** Lowest and highest written notes this table covers. Bb3 to C#6. */
+/**
+ * What the instrument can play, written pitch: low A3 up to high F#6.
+ *
+ * Wider than an acoustic alto at both ends. Yamaha's specification lists low
+ * A, front F and high F#, and the manual's chart prints the low A first,
+ * labelled. That is 33 semitones, a shade under three octaves.
+ */
+export const INSTRUMENT_LOW = 57
+export const INSTRUMENT_HIGH = 90
+
+/**
+ * What this fingering table covers, Bb3 to C#6.
+ *
+ * Narrower than the instrument on purpose. The six notes outside it, low A
+ * and the palm key notes from D6 up, are printed in the manual as diagrams
+ * that I could not read with certainty, and a wrong fingering in a chart a
+ * beginner trusts is worse than an honest gap. The app says so rather than
+ * guessing.
+ */
 export const FINGERING_LOW = 58
 export const FINGERING_HIGH = 85
 

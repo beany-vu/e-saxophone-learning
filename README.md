@@ -125,6 +125,11 @@ to trigger quietly. For accurate practice records the cable is still better.
 
 The page that answers "which key do I press", and the material to practise with.
 
+Two ranges are tracked separately, because they are different things. The
+**instrument** plays written A3 to F#6. The **fingering chart** covers Bb3 to
+C#6: the other six diagrams are in the manual and are not transcribed yet, so
+the app says so instead of guessing at them.
+
 **Fingering chart, both directions.** Pick a note and see which keys to hold, with
 the finger that operates each one. Or click the keys you are holding and it names
 the note that would come out, including when the combination is not a note at all.
@@ -145,7 +150,9 @@ mode the app ignores its own playback rather than scoring it.
 **One line at a time.** Every item is split into phrases, and any phrase can be
 selected and drilled on its own, listened to on its own, and scored on its own.
 
-**Compose** at `/compose`: click notes on the keyboard to write a tune. Pick a
+**Compose** at `/compose`: click notes on the keyboard to write a tune. The
+keyboard spans the **whole instrument**, written A3 to F#6, which is low A and
+high F#, wider than an acoustic alto at both ends and just under three octaves. Pick a
 time signature (2/4, 3/4, 4/4) and a note length, tick the dot to add half
 again, and the bars work themselves out. Bar lines appear on the staff, each
 note is heard as you place it, and a bar holding more than it should is

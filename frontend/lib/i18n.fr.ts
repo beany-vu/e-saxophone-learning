@@ -291,4 +291,6 @@ export const fr: Record<StringKey, string> = {
   'compose.nameIt': 'Nommez votre air',
   'compose.playAsYouGo': 'Jouer chaque note quand je clique',
   'compose.keyboardRange': 'Les touches disponibles sont celles que l’instrument peut jouer.',
+  'compose.fullRange': 'Tout l’instrument : de {low} a {high} en notation ecrite, sonnant de {lowSounding} a {highSounding}. Un peu moins de trois octaves, plus large qu’un alto acoustique aux deux extremites.',
+  'compose.noFingering': 'Ces notes sont hors du tableau de doigtes, l’entraineur n’affichera donc pas de doigte pour elles : {notes}. L’instrument les joue ; le tableau du manuel les contient et je n’ai pas encore transcrit ces schemas.',
 }
