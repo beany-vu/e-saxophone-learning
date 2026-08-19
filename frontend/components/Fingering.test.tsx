@@ -52,3 +52,35 @@ describe('the compact fingering under a note', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-label')).toContain('1')
   })
 })
+
+describe('reading the chart on a dark page', () => {
+  // An unpressed key used to be a transparent circle behind a near-black
+  // outline, which on the dark background left it all but invisible - worst of
+  // all on the compact grips under a tune, where there is no label to read.
+  it('gives an unpressed key a face and an outline you can actually see', () => {
+    const { container } = render(<Fingering keys={['lh1']} />)
+    const off = Array.from(container.querySelectorAll('g[data-pressed="false"] circle'))
+    expect(off.length).toBeGreaterThan(10)
+    off.forEach((c) => {
+      expect(c.getAttribute('fill')).toBe('var(--key-face)')
+      expect(c.getAttribute('stroke')).toBe('var(--key-ring)')
+    })
+  })
+
+  // The thumbnail draws the same 160-wide viewBox at 34px, a scale of about
+  // 0.21, so a ring that is 3 units wide lands on screen as a 0.6px hairline
+  // and disappears. It has to be drawn thicker to survive the shrink.
+  it('draws a thicker ring on the thumbnail than on the full size chart', () => {
+    const full = render(<Fingering keys={['lh1']} />).container
+    const small = render(<Fingering keys={['lh1']} size={34} compact />).container
+    const widthOf = (c: Element) =>
+      Number(c.querySelector('g[data-pressed=\"false\"] circle')!.getAttribute('stroke-width'))
+    expect(widthOf(small)).toBeGreaterThanOrEqual(widthOf(full) * 2.5)
+  })
+
+  it('still fills a pressed key with the accent, so the two never look alike', () => {
+    const { container } = render(<Fingering keys={['lh1']} />)
+    const on = container.querySelector('g[data-pressed="true"] circle')
+    expect(on?.getAttribute('fill')).toBe('var(--accent)')
+  })
+})
