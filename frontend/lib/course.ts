@@ -50,12 +50,40 @@ function toISO(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+/**
+ * Adds calendar days, not milliseconds.
+ *
+ * Adding `days * 86400000` looks equivalent and is not: in a timezone that
+ * puts its clocks back, the sum lands an hour earlier and can fall on the
+ * previous date. The server runs in UTC and has no such change, so the two
+ * disagreed by a day and React reported a hydration error. Passing an
+ * overflowing day number to the Date constructor keeps it on local midnight
+ * whatever the clocks do in between.
+ */
+function addDays(iso: string, days: number): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, (m || 1) - 1, (d || 1) + days)
+}
+
+/**
+ * Whole days between two calendar dates. Compared as UTC instants built from
+ * local calendar parts, because UTC has no daylight saving and the difference
+ * is therefore an exact number of days.
+ */
+function daysBetween(fromISO: string, to: Date): number {
+  const [y, m, d] = fromISO.split('-').map(Number)
+  const from = Date.UTC(y, (m || 1) - 1, d || 1)
+  const until = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate())
+  return Math.round((until - from) / DAY)
+}
+
 /** The dates week `n` covers for a learner who began on `startDate`. */
-export function weekDates(week: number, startDate: string = DEFAULT_START): { start: string; end: string } {
-  const begin = parseDate(startDate)
-  const start = new Date(begin.getTime() + (week - 1) * 7 * DAY)
-  const end = new Date(start.getTime() + 6 * DAY)
-  return { start: toISO(start), end: toISO(end) }
+export function weekDates(
+  week: number,
+  startDate: string = DEFAULT_START,
+): { start: string; end: string } {
+  const offset = (week - 1) * 7
+  return { start: toISO(addDays(startDate, offset)), end: toISO(addDays(startDate, offset + 6)) }
 }
 
 /** The day after the last week ends, which is when the course is finished. */
@@ -75,7 +103,7 @@ export type Pace = {
  * be told what that means rather than quietly given an impossible plan.
  */
 export function pace(startDate: string, targetEnd: string): Pace {
-  const days = (parseDate(targetEnd).getTime() - parseDate(startDate).getTime()) / DAY
+  const days = daysBetween(startDate, parseDate(targetEnd))
   if (days <= 0) return { weeksPerWeek: 1, verdict: 'steady' }
   const availableWeeks = days / 7
   const weeksPerWeek = COURSE.length / availableWeeks
@@ -92,9 +120,7 @@ export function pace(startDate: string, targetEnd: string): Pace {
  * yesterday, and on day one that made the whole course look unstarted.
  */
 export function weekFor(date: Date, startDate: string = DEFAULT_START): CourseWeek | null {
-  const start = parseDate(startDate).getTime()
-  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-  const days = Math.floor((today - start) / DAY)
+  const days = daysBetween(startDate, date)
   if (days < 0) return null
   const week = Math.floor(days / 7) + 1
   return COURSE.find((w) => w.week === week) ?? null

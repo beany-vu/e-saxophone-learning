@@ -188,7 +188,12 @@ func weekOf(start string, now time.Time) int {
 	if err != nil {
 		return 0
 	}
-	days := int(now.Sub(began).Hours() / 24)
+	// Both truncated to a calendar date in UTC before subtracting. Dividing a
+	// raw duration by 24 hours is off by one on the days a clock changes, which
+	// is the same bug that showed up in the frontend.
+	y, m, d := now.Date()
+	today := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	days := int(today.Sub(began).Hours() / 24)
 	if days < 0 {
 		return 0
 	}
