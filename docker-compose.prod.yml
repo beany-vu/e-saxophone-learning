@@ -49,7 +49,8 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      # 127.0.0.1, not localhost: see the note on the web healthcheck below.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -83,7 +84,12 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      # Must be 127.0.0.1, not localhost. Next binds 0.0.0.0:3000, which is
+      # IPv4 only, while the container's /etc/hosts maps localhost to ::1 as
+      # well - busybox wget tries ::1 first and gets connection refused. The
+      # probe then fails against a perfectly healthy app, and autoheal
+      # restarts the container in a loop roughly every 90 seconds.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
