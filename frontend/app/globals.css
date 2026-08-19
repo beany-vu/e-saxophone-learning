@@ -14,6 +14,32 @@
 
 * { box-sizing: border-box; }
 
+/* Always show the vertical scrollbar track. Without this the bar appears and
+   disappears as page height changes, and every appearance narrows the viewport
+   by its width, which shifts the whole layout sideways. scrollbar-gutter does
+   the same job on browsers that have it, reserving the space even when the bar
+   is hidden. */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+/* A scrollbar that matches the panels rather than the browser default, since
+   it is now permanently on screen. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) var(--bg);
+}
+
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border: 3px solid var(--bg);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
 body {
   margin: 0;
   background: var(--bg);
