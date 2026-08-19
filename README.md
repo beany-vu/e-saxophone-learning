@@ -1,8 +1,12 @@
 # e-Saxophone Learning
 
-A practice tool for digital saxophones, built for and tested on the Yamaha
-YDS-120. Not affiliated with, endorsed by, or connected to Yamaha; the
-instrument is named here only to say what the app works with. The browser listens to
+A practice tool for electronic saxophones, built for and tested on the Yamaha
+YDS-120. Anything that sends MIDI note-on messages should work, the YDS-150
+included, but only the 120 has been played against it and the fingering chart
+is transcribed from that manual. Microphone mode needs no MIDI at all, so it
+works with any wind instrument that makes a pitch. Not affiliated with,
+endorsed by, or connected to Yamaha; the instrument is named here only to say
+what the app works with. The browser listens to
 every note you play, shows it live, and saves your history to your account.
 
 Two ways in, switchable on the monitor page:
@@ -539,3 +543,22 @@ File watching over a WSL bind mount needs polling, which `WATCHPACK_POLLING` in
 **Everything returns 401**
 The cookie expired, or the database was wiped and your account went with it.
 Log in again.
+
+## Contributing
+
+Issues and pull requests are welcome at
+<https://github.com/beany-vu/e-saxophone-learning>.
+
+Two things make a change easy to accept: run the tests (`docker compose run
+--rm api-test` and `docker compose exec web npm test`), and keep the setup
+docker-only, since nothing here assumes a Go toolchain or a Node install on the
+host. Adding a fingering, a warm-up or a language is a good first change: the
+chart lives in `frontend/lib/fingerings.ts`, the material in
+`frontend/lib/curriculum.ts`, and each language in its own `frontend/lib/i18n.*.ts`
+dictionary, which the tests hold to the same keys as English.
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). Use it, change it, run your own copy. The default
+settings ship with no admin account and no analytics, so a clone is yours from
+the first boot.

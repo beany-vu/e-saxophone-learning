@@ -34,7 +34,7 @@ export const fr: Record<StringKey, string> = {
 
   'home.title': 'Suivi de pratique e-Saxophone',
   'home.intro':
-    'Un cours, un tableau de doigtes et une oreille pour le Yamaha YDS-120. L’application entend ce que vous jouez, par le cable USB ou par le microphone, et conserve votre historique de pratique.',
+    'Un cours, un tableau de doigtes et une oreille pour les saxophones electroniques comme le Yamaha YDS-120 et le YDS-150. L’application entend ce que vous jouez, par le cable USB ou par le microphone, et conserve votre historique de pratique.',
   'home.startHere': 'Commencer ici',
   'home.step1':
     'Configurez une entree dans le Moniteur : le cable USB exige le mode controleur MIDI sur l’instrument, ou utilisez le microphone sans aucun cable',
@@ -339,4 +339,8 @@ export const fr: Record<StringKey, string> = {
   'learn.rightOnTime': 'Pile sur le temps.',
   'learn.onTime': 'Dans le temps',
   'learn.stalls': 'Attentes',
+
+  // ---- Pied de page ----
+  'footer.openSource': 'Libre et open source, sous licence MIT.',
+  'footer.contribute': 'Code, tickets et contributions sur GitHub',
 }

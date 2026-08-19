@@ -36,7 +36,7 @@ export const en = {
   // Home
   'home.title': 'e-Saxophone practice tracker',
   'home.intro':
-    'A course, a fingering chart and a listener for the Yamaha YDS-120. The app hears what you play, over the USB cable or through the microphone, and keeps your practice history.',
+    'A course, a fingering chart and a listener for electronic saxophones such as the Yamaha YDS-120 and YDS-150. The app hears what you play, over the USB cable or through the microphone, and keeps your practice history.',
   'home.startHere': 'Start here',
   'home.step1':
     'Set up an input on the Monitor: the USB cable needs MIDI controller mode on the instrument, or use the microphone and no cable at all',
@@ -339,6 +339,10 @@ export const en = {
   'learn.rightOnTime': 'Right on the beat.',
   'learn.onTime': 'On time',
   'learn.stalls': 'Waits',
+
+  // ---- Footer ----
+  'footer.openSource': 'Free and open source, under the MIT licence.',
+  'footer.contribute': 'Code, issues and contributions on GitHub',
 } as const
 
 export type StringKey = keyof typeof en
