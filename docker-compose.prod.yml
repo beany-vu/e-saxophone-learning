@@ -1,0 +1,118 @@
+# Production stack. Distinct project name from docker-compose.yml so the prod
+# database gets its own volume and a `docker compose down -v` in dev can never
+# wipe it. Bring it up with:
+#   docker compose -f docker-compose.prod.yml up -d --build
+name: e-saxophone-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: esax_db_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yds}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in production}
+      POSTGRES_DB: ${POSTGRES_DB:-yds120}
+    # No ports: - Postgres is reachable only from inside this network.
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - esax_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yds} -d ${POSTGRES_DB:-yds120}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build: ./backend
+    container_name: esax_api_prod
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-yds}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-yds120}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required in production}
+      PORT: "8080"
+      # The API is also published on its own hostname, so a browser sitting on
+      # the web origin calls it cross-origin and needs this allowlisted.
+      CORS_ORIGIN: ${WEB_PUBLIC_URL:-https://e-saxophone.body-and-binary.net}
+      # Everything is served over HTTPS through the tunnel, so the session
+      # cookie can be Secure.
+      COOKIE_SECURE: "true"
+    ports:
+      # Host-local only, for poking at it from the server itself. The public
+      # route is the tunnel, which does not need a published port.
+      - "127.0.0.1:8090:8080"
+    networks:
+      - esax_network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      # Docker only marks a failing container unhealthy; it never restarts it.
+      # The autoheal container already running on this host watches for this
+      # label and restarts anything that goes unhealthy.
+      autoheal: "true"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        # Baked into the build: Next resolves the /api/* rewrite destination
+        # when it compiles, not when it starts.
+        API_INTERNAL_URL: http://api:8080
+    container_name: esax_web_prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Already compiled into the build above; kept here so the running
+      # container still reports the value it is actually using.
+      API_INTERNAL_URL: http://api:8080
+    ports:
+      - "127.0.0.1:3010:3000"
+    networks:
+      - esax_network
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      autoheal: "true"
+
+  # Outbound-only connection to Cloudflare; nothing has to be port-forwarded.
+  # The token identifies a tunnel created in the Cloudflare dashboard, and the
+  # public hostname -> service mapping lives there too, not in this file:
+  #   e-saxophone.body-and-binary.net     -> http://web:3000
+  #   e-saxophone-api.body-and-binary.net -> http://api:8080
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: esax_cloudflare_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}
+    networks:
+      - esax_network
+    depends_on:
+      - api
+      - web
+
+networks:
+  esax_network:
+    driver: bridge
+    name: esax_network_prod
+
+volumes:
+  db_data:
