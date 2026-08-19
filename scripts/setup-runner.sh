@@ -36,7 +36,7 @@ if [ -z "$VERSION" ]; then
   VERSION="$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest \
     | grep -m1 '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/' || true)"
 fi
-VERSION="${VERSION:-2.328.0}"
+VERSION="${VERSION:-2.336.0}"
 echo "runner version: $VERSION"
 
 mkdir -p "$RUNNER_DIR"
@@ -65,7 +65,8 @@ fi
   --work _work \
   --replace
 
-# svc.sh writes /etc/systemd/system/actions.runner.<owner>-<repo>.<name>.service
+# config.sh generates svc.sh, which writes
+# /etc/systemd/system/actions.runner.<owner>-<repo>.<name>.service
 sudo ./svc.sh install "$(whoami)"
 sudo ./svc.sh start
 sudo ./svc.sh status
