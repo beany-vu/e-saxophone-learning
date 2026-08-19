@@ -61,7 +61,7 @@ services:
   # Test runner. Not started by `up` (it sits behind the "test" profile).
   #   docker compose run --rm api-test
   api-test:
-    image: golang:1.23-alpine
+    image: golang:1.25-alpine
     working_dir: /src
     volumes:
       - ./backend:/src
@@ -80,7 +80,7 @@ services:
   # one process per conversation.
   #   docker compose run --rm -T mcp
   mcp:
-    image: golang:1.23-alpine
+    image: golang:1.25-alpine
     working_dir: /src
     volumes:
       - ./backend:/src
