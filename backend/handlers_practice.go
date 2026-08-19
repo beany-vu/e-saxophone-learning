@@ -243,6 +243,11 @@ func (s *server) handleSummary(w http.ResponseWriter, r *http.Request) {
 	// Per warm-up and per song: how often, how well at best, and when last.
 	// Accuracy is computed in SQL so "best" means the best single attempt
 	// rather than the average, which is what a practice log should show.
+	//
+	// Drill runs are excluded. Playing the four notes you keep fluffing is
+	// practice, and it counts towards the totals and the note statistics, but
+	// it is not playing the piece: counting it here would let a five note drill
+	// post a better score for a song than the song has ever been played at.
 	irows, err := s.db.Query(ctx,
 		`SELECT item,
 		        MIN(source),
@@ -253,7 +258,7 @@ func (s *server) handleSummary(w http.ResponseWriter, r *http.Request) {
 		        COALESCE(SUM(duration_seconds), 0),
 		        MAX(started_at)
 		 FROM practice_sessions
-		 WHERE user_id = $1 AND item <> ''
+		 WHERE user_id = $1 AND item <> '' AND source NOT LIKE '%-drill'
 		 GROUP BY item
 		 ORDER BY MAX(started_at) DESC`, uid)
 	if err == nil {

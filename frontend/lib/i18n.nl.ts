@@ -331,4 +331,13 @@ export const nl: Record<StringKey, string> = {
   // ---- Voettekst ----
   'footer.openSource': 'Gratis en open source, onder de MIT-licentie.',
   'footer.contribute': 'Code, meldingen en bijdragen op GitHub',
+
+  // ---- Zwakke plekken ----
+  'learn.weakSpots': 'Zwakke plekken',
+  'learn.weakSpotsHint': 'De noten die je op deze regel hebt gemist, met de noot ervoor en erna: de sprong naar een noot toe is meestal het lastige deel.',
+  'learn.drillingHint': 'Nu alleen deze noten. Speel ze tot ze niet meer lastig zijn en pak dan de hele regel weer op.',
+  'learn.practiseWeakSpots': 'Deze oefenen',
+  'learn.loopIt': 'Herhalen',
+  'learn.cleanPasses': '{n} foutloos',
+  'learn.backToWholeLine': 'Hele regel',
 }

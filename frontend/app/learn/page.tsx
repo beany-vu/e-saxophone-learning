@@ -31,6 +31,7 @@ import {
 } from '@/lib/fingerings'
 import { formatDuration, toConcert, yamahaName } from '@/lib/notes'
 import { describeOffset } from '@/lib/calibration'
+import { describeRanges, drillFrom, drillRanges } from '@/lib/weakspots'
 import {
   barFraction,
   classifyTiming,
@@ -252,10 +253,24 @@ export default function LearnPage() {
     return found ? localiseItem(found, lang) : null
   }, [activeId, customItems, lang])
   const [phraseIndex, setPhraseIndex] = useState<number | null>(null)
-  const segment = useMemo(
+  const baseSegment = useMemo(
     () => (active ? phraseNotes(active, phraseIndex) : null),
     [active, phraseIndex],
   )
+  // The positions in the line that have gone wrong, kept across attempts on
+  // the same line rather than per run: a note you fluff every time is the
+  // point, and clearing it on restart would hide exactly that.
+  const [weakSpots, setWeakSpots] = useState<number[]>([])
+  const ranges = useMemo(
+    () => drillRanges(weakSpots, baseSegment?.notes.length ?? 0),
+    [weakSpots, baseSegment],
+  )
+  // When a drill is running it stands in for the line, so every part of the
+  // trainer (the staff, the strip, the bar, the scoring) works on it unchanged.
+  const [drill, setDrill] = useState<ReturnType<typeof drillFrom> | null>(null)
+  const [looping, setLooping] = useState(true)
+  const [cleanPasses, setCleanPasses] = useState(0)
+  const segment = drill ?? baseSegment
   const [index, setIndex] = useState(0)
   const [correct, setCorrect] = useState(0)
   const [wrong, setWrong] = useState(0)
@@ -300,6 +315,11 @@ export default function LearnPage() {
   // The note callback must see current values without resubscribing mid-run.
   const runRef = useRef({ running: false, index: 0, notes: [] as number[] })
   runRef.current = { running, index, notes: segment?.notes ?? [] }
+  // A miss inside a drill is a miss at that note's place in the whole line, so
+  // drilling a drill keeps narrowing the same passage instead of renumbering
+  // it each time.
+  const drillRef = useRef<number[] | null>(null)
+  drillRef.current = drill?.positions ?? null
 
   useEffect(() => {
     if (!running || startedAt === null) return
@@ -379,6 +399,10 @@ export default function LearnPage() {
     }
 
     setWrong((w) => w + 1)
+    setWeakSpots((spots) => {
+      const inLine = drillRef.current ? (drillRef.current[at] ?? at) : at
+      return spots.includes(inLine) ? spots : [...spots, inLine]
+    })
     setHint(
       note % 12 === target % 12
         ? tRef.current('learn.rightNoteWrongOctave', {
@@ -402,6 +426,14 @@ export default function LearnPage() {
     setHint(null)
     setDone(false)
     resetTiming()
+    leaveDrill()
+    setWeakSpots([])
+  }
+
+  /** Back to the whole line, with the record of what went wrong intact. */
+  function leaveDrill() {
+    setDrill(null)
+    setCleanPasses(0)
   }
 
   /** Everything the bar knows, back to the start of the line. */
@@ -412,6 +444,29 @@ export default function LearnPage() {
     setLastTiming(null)
     resetClock()
   }
+
+  /** Play only the places that went wrong, with their approach notes. */
+  function startDrill() {
+    if (!baseSegment || ranges.length === 0 || !active) return
+    setDrill(drillFrom(baseSegment, ranges))
+    setCleanPasses(0)
+    // The drill is now the line, so the ordinary runner does the rest. React
+    // has not re-rendered yet, so start on the next tick to let `segment`
+    // become the drill first.
+    setTimeout(() => start(active), 0)
+  }
+
+  // Looping is the point of a drill: a passage you cannot play is not fixed by
+  // playing it once. It stops the moment you press anything, because `running`
+  // and `done` both go false.
+  useEffect(() => {
+    if (!done || !drill || !active) return
+    if (wrong === 0) setCleanPasses((n) => n + 1)
+    if (!looping) return
+    const t = setTimeout(() => start(active), 1400)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, drill, looping])
 
   function start(item: PracticeItem) {
     player.stop()
@@ -441,7 +496,7 @@ export default function LearnPage() {
       const counts: Record<string, number> = {}
       Object.entries(input.noteCounts).forEach(([n, c]) => (counts[n] = c))
       await api.saveSession({
-        source: active.kind,
+        source: drill ? `${active.kind}-drill` : active.kind,
         item: active.id,
         durationSeconds: elapsed,
         notesPlayed: correct + wrong,
@@ -1049,6 +1104,57 @@ export default function LearnPage() {
                 <p className="error" style={{ marginTop: 8, marginBottom: 0 }}>
                   {t('learn.notConnectedScore')}
                 </p>
+              )}
+
+              {ranges.length > 0 && (
+                <div
+                  className="panel"
+                  style={{ marginTop: 12, marginBottom: 0, borderColor: 'var(--warn)' }}
+                >
+                  <div className="row" style={{ justifyContent: 'space-between', gap: 10 }}>
+                    <div>
+                      <strong>{t('learn.weakSpots')}</strong>{' '}
+                      <span className="mono">{describeRanges(ranges).join(', ')}</span>
+                      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                        {drill ? t('learn.drillingHint') : t('learn.weakSpotsHint')}
+                      </div>
+                    </div>
+                    <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                      <label
+                        className="row"
+                        style={{ gap: 6, alignItems: 'center', margin: 0, fontSize: 13 }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={looping}
+                          onChange={(e) => setLooping(e.target.checked)}
+                          style={{ width: 'auto' }}
+                        />
+                        <span>{t('learn.loopIt')}</span>
+                      </label>
+                      {drill ? (
+                        <>
+                          <span className="muted" style={{ fontSize: 13 }}>
+                            {t('learn.cleanPasses', { n: cleanPasses })}
+                          </span>
+                          <button
+                            className="ghost"
+                            onClick={() => {
+                              setRunning(false)
+                              leaveDrill()
+                            }}
+                          >
+                            {t('learn.backToWholeLine')}
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={startDrill} disabled={input.status !== 'ready'}>
+                          {t('learn.practiseWeakSpots')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>

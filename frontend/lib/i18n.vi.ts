@@ -331,4 +331,13 @@ export const vi: Record<StringKey, string> = {
   // ---- Chân trang ----
   'footer.openSource': 'Miễn phí và mã nguồn mở, theo giấy phép MIT.',
   'footer.contribute': 'Mã nguồn, báo lỗi và đóng góp trên GitHub',
+
+  // ---- Chỗ yếu ----
+  'learn.weakSpots': 'Chỗ yếu',
+  'learn.weakSpotsHint': 'Những nốt bạn đã trượt trên dòng này, kèm nốt liền trước và liền sau: cái khó thường nằm ở chỗ chuyển vào nốt.',
+  'learn.drillingHint': 'Giờ chỉ những nốt này thôi. Thổi tới khi chúng hết khó, rồi quay lại cả dòng.',
+  'learn.practiseWeakSpots': 'Luyện chỗ này',
+  'learn.loopIt': 'Lặp lại',
+  'learn.cleanPasses': '{n} lần sạch',
+  'learn.backToWholeLine': 'Cả dòng',
 }

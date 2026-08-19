@@ -331,4 +331,13 @@ export const es: Record<StringKey, string> = {
   // ---- Pie de página ----
   'footer.openSource': 'Libre y de código abierto, con licencia MIT.',
   'footer.contribute': 'Código, incidencias y contribuciones en GitHub',
+
+  // ---- Puntos débiles ----
+  'learn.weakSpots': 'Puntos débiles',
+  'learn.weakSpotsHint': 'Las notas que has fallado en esta línea, con la nota de cada lado: lo difícil suele ser el salto hasta la nota, no la nota sola.',
+  'learn.drillingHint': 'Ahora solo estas notas. Tócalas hasta que dejen de costarte y vuelve después a la línea entera.',
+  'learn.practiseWeakSpots': 'Practicar estas',
+  'learn.loopIt': 'En bucle',
+  'learn.cleanPasses': '{n} sin fallos',
+  'learn.backToWholeLine': 'Línea entera',
 }

@@ -343,6 +343,15 @@ export const en = {
   // ---- Footer ----
   'footer.openSource': 'Free and open source, under the MIT licence.',
   'footer.contribute': 'Code, issues and contributions on GitHub',
+
+  // ---- Weak spots ----
+  'learn.weakSpots': 'Weak spots',
+  'learn.weakSpotsHint': 'The notes you have missed on this line, with the note either side: the jump into a note is usually the hard part.',
+  'learn.drillingHint': 'Only these notes now. Play them until they stop being the hard part, then go back to the whole line.',
+  'learn.practiseWeakSpots': 'Practise these',
+  'learn.loopIt': 'Loop',
+  'learn.cleanPasses': '{n} clean',
+  'learn.backToWholeLine': 'Whole line',
 } as const
 
 export type StringKey = keyof typeof en
