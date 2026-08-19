@@ -31,7 +31,7 @@ export const nl: Record<StringKey, string> = {
   'common.saving': 'Opslaan...',
   'common.playing': 'Bezig...',
   'home.title': 'e-Saxophone oefenlogboek',
-  'home.intro': 'Een cursus, een grepentabel en een luisterend oor voor de Yamaha YDS-120. De app hoort wat je speelt, via de USB-kabel of via de microfoon, en bewaart je oefengeschiedenis.',
+  'home.intro': 'Een cursus, een grepentabel en een luisterend oor voor elektronische saxofoons zoals de Yamaha YDS-120 en YDS-150. De app hoort wat je speelt, via de USB-kabel of via de microfoon, en bewaart je oefengeschiedenis.',
   'home.startHere': 'Begin hier',
   'home.step1': 'Stel een ingang in op de Monitor: de USB-kabel vraagt om de MIDI-controllerstand op het instrument, of gebruik de microfoon en helemaal geen kabel',
   'home.step2': 'Gebruik Chrome of Edge. Firefox en Safari ondersteunen Web MIDI niet',
@@ -327,4 +327,8 @@ export const nl: Record<StringKey, string> = {
   'learn.rightOnTime': 'Precies op de tel.',
   'learn.onTime': 'Op tijd',
   'learn.stalls': 'Keer gewacht',
+
+  // ---- Voettekst ----
+  'footer.openSource': 'Gratis en open source, onder de MIT-licentie.',
+  'footer.contribute': 'Code, meldingen en bijdragen op GitHub',
 }

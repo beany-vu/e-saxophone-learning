@@ -5,10 +5,12 @@ import { InputProvider } from '@/lib/input-context'
 import { I18nProvider } from '@/lib/i18n-context'
 import Nav from '@/components/Nav'
 import Analytics from '@/components/Analytics'
+import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'e-Saxophone Practice',
-  description: 'Practice tracking for digital saxophones, made for the Yamaha YDS-120',
+  description:
+    'Practice tracking for electronic saxophones such as the Yamaha YDS-120 and YDS-150. Free and open source.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <InputProvider>
               <Nav />
               <div className="container">{children}</div>
+              <Footer />
             </InputProvider>
           </AuthProvider>
         </I18nProvider>

@@ -31,7 +31,7 @@ export const es: Record<StringKey, string> = {
   'common.saving': 'Guardando...',
   'common.playing': 'Sonando...',
   'home.title': 'Registro de práctica e-Saxophone',
-  'home.intro': 'Un curso, una tabla de digitaciones y un oído para el Yamaha YDS-120. La aplicación escucha lo que tocas, por el cable USB o por el micrófono, y guarda tu historial de práctica.',
+  'home.intro': 'Un curso, una tabla de digitaciones y un oído para saxofones electrónicos como el Yamaha YDS-120 y el YDS-150. La aplicación escucha lo que tocas, por el cable USB o por el micrófono, y guarda tu historial de práctica.',
   'home.startHere': 'Empieza aquí',
   'home.step1': 'Configura una entrada en el Monitor: el cable USB necesita el modo controlador MIDI en el instrumento, o usa el micrófono y ningún cable',
   'home.step2': 'Usa Chrome o Edge. Firefox y Safari no implementan Web MIDI',
@@ -327,4 +327,8 @@ export const es: Record<StringKey, string> = {
   'learn.rightOnTime': 'Justo en el tiempo.',
   'learn.onTime': 'A tiempo',
   'learn.stalls': 'Esperas',
+
+  // ---- Pie de página ----
+  'footer.openSource': 'Libre y de código abierto, con licencia MIT.',
+  'footer.contribute': 'Código, incidencias y contribuciones en GitHub',
 }

@@ -127,6 +127,13 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
 .error { color: var(--bad); font-size: 14px; margin: 8px 0 0; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+/* footer */
+.site-footer {
+  max-width: 1100px; margin: 32px auto 24px; padding: 16px 16px 0;
+  border-top: 1px solid var(--line); color: var(--muted); font-size: 13px;
+}
+.site-footer a { color: var(--accent-2); }
+
 /* piano */
 .piano { position: relative; height: 150px; user-select: none; margin: 6px 0 4px; }
 .piano .whites { display: flex; height: 100%; }
