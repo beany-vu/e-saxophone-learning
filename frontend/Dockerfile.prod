@@ -16,6 +16,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # proxy pointing at the compiled-in localhost fallback.
 ARG API_INTERNAL_URL=http://api:8080
 ENV API_INTERNAL_URL=$API_INTERNAL_URL
+# NEXT_PUBLIC_* values are substituted into the client bundle at build time,
+# not read at runtime, so this has to arrive here too. Empty means no tag.
+ARG NEXT_PUBLIC_GA_ID=
+ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

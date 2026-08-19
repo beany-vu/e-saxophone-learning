@@ -43,6 +43,9 @@ services:
       NODE_ENV: development
       # WSL bind mounts do not deliver inotify events, so webpack has to poll.
       WATCHPACK_POLLING: "true"
+      # Normally empty in dev: practising at your desk is not traffic worth
+      # reporting. Set GA_MEASUREMENT_ID in .env to try the tag locally.
+      NEXT_PUBLIC_GA_ID: ${GA_MEASUREMENT_ID:-}
     volumes:
       # Live mount: edit files on the host, the dev server recompiles.
       - ./frontend:/app

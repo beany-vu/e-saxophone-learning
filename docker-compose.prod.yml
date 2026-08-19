@@ -35,7 +35,11 @@ services:
       PORT: "8080"
       # The API is also published on its own hostname, so a browser sitting on
       # the web origin calls it cross-origin and needs this allowlisted.
-      CORS_ORIGIN: ${WEB_PUBLIC_URL:-https://e-saxophone.body-and-binary.net}
+      # Whoever deploys this has their own domain, so there is no default to
+      # bake in. Left unset, no cross-origin caller is allowed, and the site
+      # still works: the browser reaches the API through the web origin's
+      # /api/* rewrite, which is same-origin and never involves CORS.
+      CORS_ORIGIN: ${WEB_PUBLIC_URL:-}
       # Everything is served over HTTPS through the tunnel, so the session
       # cookie can be Secure.
       COOKIE_SECURE: "true"
@@ -74,6 +78,9 @@ services:
         # Baked into the build: Next resolves the /api/* rewrite destination
         # when it compiles, not when it starts.
         API_INTERNAL_URL: http://api:8080
+        # Also baked in, for the same reason. Empty means no analytics tag at
+        # all, which is what a copy of this stack without the setting gets.
+        NEXT_PUBLIC_GA_ID: ${GA_MEASUREMENT_ID:-}
     container_name: esax_web_prod
     restart: unless-stopped
     environment:
@@ -105,8 +112,8 @@ services:
   # Outbound-only connection to Cloudflare; nothing has to be port-forwarded.
   # The token identifies a tunnel created in the Cloudflare dashboard, and the
   # public hostname -> service mapping lives there too, not in this file:
-  #   e-saxophone.body-and-binary.net     -> http://web:3000
-  #   e-saxophone-api.body-and-binary.net -> http://api:8080
+  #   e-saxophone.example.com     -> http://web:3000
+  #   e-saxophone-api.example.com -> http://api:8080
   cloudflare-tunnel:
     image: cloudflare/cloudflared:latest
     container_name: esax_cloudflare_tunnel
