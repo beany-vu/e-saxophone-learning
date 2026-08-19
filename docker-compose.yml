@@ -66,6 +66,25 @@ services:
     profiles: ["test"]
     command: ["go", "test", "./...", "-count=1"]
 
+  # The MCP server, so an AI assistant can read how practice is going.
+  # Not started by `up`: an assistant launches it and talks to it over stdio,
+  # one process per conversation.
+  #   docker compose run --rm -T mcp
+  mcp:
+    image: golang:1.23-alpine
+    working_dir: /src
+    volumes:
+      - ./backend:/src
+      - go_mod_cache:/go/pkg/mod
+    environment:
+      YDS_API_URL: http://api:8080
+      YDS_EMAIL: ${YDS_EMAIL:-}
+      YDS_PASSWORD: ${YDS_PASSWORD:-}
+    depends_on:
+      - api
+    profiles: ["mcp"]
+    command: ["go", "run", "./cmd/mcp"]
+
 volumes:
   db_data:
   go_mod_cache:

@@ -191,6 +191,37 @@ which is what you need if the instrument reports sounding pitch rather than fing
 **Tracking.** Save an attempt and it lands on the Progress page: attempts, best
 accuracy, time spent and when you last played it, per warm-up and per song.
 
+## Talking to an AI assistant
+
+`backend/cmd/mcp` is an MCP server, so an assistant such as Claude can read how
+practice is going and give feedback on it. Four read-only tools:
+
+| Tool | Answers |
+|---|---|
+| `practice_summary` | sessions, notes, time, and how each warm-up and song has gone |
+| `course_status` | start date, target, weeks ticked off, which week the calendar says |
+| `weak_notes` | notes in the playable range never or rarely played |
+| `recent_sessions` | the last few sessions, to see whether practice is regular |
+
+To connect it, put your account in `.env`:
+
+```bash
+YDS_EMAIL=you@example.com
+YDS_PASSWORD=your-password
+```
+
+`.mcp.json` in the project root already points at it, so Claude Code picks it up
+from this directory. It runs one process per conversation over stdio:
+
+```bash
+docker compose run --rm -T mcp     # what the assistant launches
+```
+
+**Read only, deliberately.** An assistant that can see your practice is useful;
+one that can quietly rewrite it is a different decision, and not one to make by
+accident. MCP is JSON-RPC over stdin and stdout, which is little enough protocol
+to implement directly, so this is one Go file with no dependencies.
+
 ## Layout
 
 ```
@@ -205,6 +236,7 @@ backend/                Go API, one flat "package main"
   schema.sql            users, practice_sessions, note_stats
   openapi.json          the API description, embedded and served
   openapi.go            serves it, and openapi_test.go stops it drifting
+  cmd/mcp/main.go       the MCP server an AI assistant talks to
   *_test.go             tests live next to the code they cover
 
 frontend/               Next.js 15, App Router, TypeScript

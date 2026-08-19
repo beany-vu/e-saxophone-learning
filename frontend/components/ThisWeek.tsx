@@ -30,7 +30,8 @@ export default function ThisWeek() {
     }).start
     setStartDate(start)
 
-    const finished = parseDone(localStorage.getItem('yds120.courseDone'))
+    const stored = parseDone(localStorage.getItem('yds120.courseDone'))
+    const finished = user?.courseWeeksDone?.length ? user.courseWeeksDone : stored
     setWeeksDone(finished)
     const saved = Number(localStorage.getItem('yds120.courseWeek'))
     if (saved >= 1 && saved <= COURSE.length) setWeekNumber(saved)

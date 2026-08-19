@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "yds120": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "/home/beany/projects/yds120-learning/docker-compose.yml",
+        "run",
+        "--rm",
+        "-T",
+        "mcp"
+      ]
+    }
+  }
+}

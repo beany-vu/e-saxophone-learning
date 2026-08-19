@@ -32,6 +32,11 @@ ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS wrong_notes   INTEGER NOT
 ALTER TABLE users ADD COLUMN IF NOT EXISTS course_start DATE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS course_target_end DATE;
 
+-- Which weeks of the course this learner has finished. Lived in the browser
+-- first, which meant it was invisible to the API, so nothing outside that one
+-- browser could tell how the course was going.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS course_weeks_done INTEGER[] NOT NULL DEFAULT '{}';
+
 -- One row per (user, midi note): how many times that note has been played.
 -- Powers the weakness heatmap on the Progress page.
 CREATE TABLE IF NOT EXISTS note_stats (

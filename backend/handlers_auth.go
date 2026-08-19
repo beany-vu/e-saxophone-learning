@@ -24,6 +24,7 @@ type userResponse struct {
 	// people are not marched through the same calendar.
 	CourseStart string `json:"courseStart"`
 	TargetEnd   string `json:"courseTargetEnd"`
+	WeeksDone   []int  `json:"courseWeeksDone"`
 }
 
 // handleSignup creates an account, then logs the user in by setting the cookie.
@@ -123,10 +124,11 @@ func (s *server) handleMe(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFrom(r.Context())
 	var u userResponse
 	var start, target *time.Time
+	u.WeeksDone = []int{}
 	err := s.db.QueryRow(r.Context(),
-		`SELECT id, email, display_name, course_start, course_target_end
+		`SELECT id, email, display_name, course_start, course_target_end, course_weeks_done
 		 FROM users WHERE id = $1`, uid,
-	).Scan(&u.ID, &u.Email, &u.DisplayName, &start, &target)
+	).Scan(&u.ID, &u.Email, &u.DisplayName, &start, &target, &u.WeeksDone)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "session user not found")
 		return

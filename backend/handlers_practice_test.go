@@ -301,3 +301,92 @@ func TestCourseDates(t *testing.T) {
 		}
 	})
 }
+
+func TestCourseWeeksDone(t *testing.T) {
+	pool := testDB(t)
+	testPool = pool
+	s := &server{db: pool, jwtSecret: []byte("test"), corsOrigin: "http://localhost:3000"}
+
+	put := func(t *testing.T, uid string, body courseRequest) *httptest.ResponseRecorder {
+		t.Helper()
+		raw, _ := json.Marshal(body)
+		req := httptest.NewRequest("PUT", "/api/practice/course", bytes.NewReader(raw))
+		req = req.WithContext(context.WithValue(req.Context(), userIDKey, uid))
+		rec := httptest.NewRecorder()
+		s.handleSetCourse(rec, req)
+		return rec
+	}
+
+	read := func(t *testing.T, uid string) userResponse {
+		t.Helper()
+		req := httptest.NewRequest("GET", "/api/auth/me", nil)
+		req = req.WithContext(context.WithValue(req.Context(), userIDKey, uid))
+		rec := httptest.NewRecorder()
+		s.handleMe(rec, req)
+		var out userResponse
+		json.Unmarshal(rec.Body.Bytes(), &out)
+		return out
+	}
+
+	t.Run("a new account has finished nothing", func(t *testing.T) {
+		uid := testUser(t, pool)
+		if got := read(t, uid).WeeksDone; len(got) != 0 {
+			t.Errorf("weeks done = %v, want empty", got)
+		}
+	})
+
+	t.Run("stores the weeks that are ticked", func(t *testing.T) {
+		uid := testUser(t, pool)
+		put(t, uid, courseRequest{WeeksDone: []int{3, 1, 2}})
+		if got := read(t, uid).WeeksDone; len(got) != 3 || got[0] != 1 || got[2] != 3 {
+			t.Errorf("weeks done = %v, want 1 2 3 in order", got)
+		}
+	})
+
+	t.Run("drops weeks that are not in the course", func(t *testing.T) {
+		uid := testUser(t, pool)
+		put(t, uid, courseRequest{WeeksDone: []int{0, 1, 21, -4, 20}})
+		if got := read(t, uid).WeeksDone; len(got) != 2 || got[0] != 1 || got[1] != 20 {
+			t.Errorf("weeks done = %v, want just 1 and 20", got)
+		}
+	})
+
+	t.Run("drops duplicates", func(t *testing.T) {
+		uid := testUser(t, pool)
+		put(t, uid, courseRequest{WeeksDone: []int{2, 2, 2}})
+		if got := read(t, uid).WeeksDone; len(got) != 1 {
+			t.Errorf("weeks done = %v, want one entry", got)
+		}
+	})
+
+	t.Run("leaves the weeks alone when the caller only changes dates", func(t *testing.T) {
+		uid := testUser(t, pool)
+		put(t, uid, courseRequest{WeeksDone: []int{1, 2}})
+		put(t, uid, courseRequest{StartDate: "2026-09-07"})
+		got := read(t, uid)
+		if len(got.WeeksDone) != 2 {
+			t.Errorf("weeks done = %v, want them untouched", got.WeeksDone)
+		}
+		if got.CourseStart != "2026-09-07" {
+			t.Errorf("start = %q", got.CourseStart)
+		}
+	})
+
+	t.Run("unticks by sending the shorter list", func(t *testing.T) {
+		uid := testUser(t, pool)
+		put(t, uid, courseRequest{WeeksDone: []int{1, 2, 3}})
+		put(t, uid, courseRequest{WeeksDone: []int{1, 3}})
+		if got := read(t, uid).WeeksDone; len(got) != 2 || got[1] != 3 {
+			t.Errorf("weeks done = %v, want 1 and 3", got)
+		}
+	})
+
+	t.Run("two learners keep their own weeks", func(t *testing.T) {
+		first, second := testUser(t, pool), testUser(t, pool)
+		put(t, first, courseRequest{WeeksDone: []int{1, 2, 3, 4}})
+		put(t, second, courseRequest{WeeksDone: []int{1}})
+		if len(read(t, first).WeeksDone) != 4 || len(read(t, second).WeeksDone) != 1 {
+			t.Error("weeks leaked between accounts")
+		}
+	})
+}

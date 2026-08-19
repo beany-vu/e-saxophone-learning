@@ -188,7 +188,12 @@
           "email": { "type": "string", "format": "email" },
           "displayName": { "type": "string" },
           "courseStart": { "type": "string", "description": "yyyy-mm-dd, empty until chosen" },
-          "courseTargetEnd": { "type": "string", "description": "yyyy-mm-dd, empty until chosen" }
+          "courseTargetEnd": { "type": "string", "description": "yyyy-mm-dd, empty until chosen" },
+          "courseWeeksDone": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Week numbers this learner has ticked off, ascending"
+          }
         }
       },
       "SessionInput": {
@@ -243,7 +248,12 @@
         "type": "object",
         "properties": {
           "startDate": { "type": "string", "description": "yyyy-mm-dd, or empty to clear" },
-          "targetEnd": { "type": "string", "description": "yyyy-mm-dd, or empty to clear" }
+          "targetEnd": { "type": "string", "description": "yyyy-mm-dd, or empty to clear" },
+          "weeksDone": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1, "maximum": 20 },
+            "description": "Weeks ticked off. Omit to leave them alone; send a shorter list to untick. Numbers outside the course, and duplicates, are dropped rather than rejected"
+          }
         }
       }
     }

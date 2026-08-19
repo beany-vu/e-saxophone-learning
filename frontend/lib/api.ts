@@ -9,6 +9,8 @@ export type User = {
   /** Empty until the learner picks dates. Per account, not per browser. */
   courseStart: string
   courseTargetEnd: string
+  /** Weeks of the course ticked off, ascending. */
+  courseWeeksDone: number[]
 }
 
 export type SessionBrief = {
@@ -77,10 +79,10 @@ export const api = {
 
   summary: () => request<Summary>('/api/practice/summary'),
 
-  setCourseDates: (startDate: string, targetEnd: string) =>
+  setCourseDates: (startDate: string, targetEnd: string, weeksDone?: number[]) =>
     request<{ status: string }>('/api/practice/course', {
       method: 'PUT',
-      body: JSON.stringify({ startDate, targetEnd }),
+      body: JSON.stringify({ startDate, targetEnd, weeksDone }),
     }),
 
   saveSession: (payload: {

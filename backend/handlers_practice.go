@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"sort"
 	"net/http"
 	"strconv"
 	"time"
@@ -80,9 +81,14 @@ func (s *server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 const dateLayout = "2006-01-02"
 
+// How many weeks the course has. The material lives in the frontend; the API
+// only needs the bound so it can reject nonsense week numbers.
+const courseWeeks = 20
+
 type courseRequest struct {
 	StartDate string `json:"startDate"` // yyyy-mm-dd, empty to clear
 	TargetEnd string `json:"targetEnd"` // yyyy-mm-dd, empty to clear
+	WeeksDone []int  `json:"weeksDone"` // weeks ticked off, null to leave alone
 }
 
 // handleSetCourse stores when this learner started the course and when they
@@ -121,9 +127,30 @@ func (s *server) handleSetCourse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Weeks are cleaned rather than trusted: a week number outside the course
+	// would be stored happily and then confuse every reader of this row.
+	weeks := req.WeeksDone
+	if weeks != nil {
+		seen := map[int]bool{}
+		cleaned := []int{}
+		for _, w := range weeks {
+			if w < 1 || w > courseWeeks || seen[w] {
+				continue
+			}
+			seen[w] = true
+			cleaned = append(cleaned, w)
+		}
+		sort.Ints(cleaned)
+		weeks = cleaned
+	}
+
 	_, err := s.db.Exec(r.Context(),
-		`UPDATE users SET course_start = $2, course_target_end = $3 WHERE id = $1`,
-		uid, start, target)
+		`UPDATE users
+		 SET course_start = $2,
+		     course_target_end = $3,
+		     course_weeks_done = COALESCE($4, course_weeks_done)
+		 WHERE id = $1`,
+		uid, start, target, weeks)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not save course dates")
 		return

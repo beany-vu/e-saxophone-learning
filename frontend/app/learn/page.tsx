@@ -101,7 +101,9 @@ export default function LearnPage() {
   useEffect(() => {
     const onCalendar = weekFor(new Date(), startDate)?.week ?? null
     setCalendarWeek(onCalendar)
-    const finished = parseDone(localStorage.getItem(DONE_STORAGE_KEY))
+    // The account wins over the browser: it is the copy that follows you.
+    const stored = parseDone(localStorage.getItem(DONE_STORAGE_KEY))
+    const finished = user?.courseWeeksDone?.length ? user.courseWeeksDone : stored
     setWeeksDone(finished)
     const saved = Number(localStorage.getItem(WEEK_STORAGE_KEY))
     if (saved >= 1 && saved <= COURSE.length) setWorkingWeek(saved)
@@ -122,7 +124,7 @@ export default function LearnPage() {
 
     if (!user) return setDatesMsg(t('course.datesLocal'))
     try {
-      await api.setCourseDates(nextStart, nextTarget)
+      await api.setCourseDates(nextStart, nextTarget, weeksDone)
       setDatesMsg(t('course.datesAccount'))
     } catch (err) {
       setDatesMsg(err instanceof Error ? err.message : 'save failed')
@@ -135,13 +137,16 @@ export default function LearnPage() {
       const updated = toggleDone(weeksDone, weekNumber)
       setWeeksDone(updated)
       localStorage.setItem(DONE_STORAGE_KEY, serialiseDone(updated))
+      // Fire and forget: ticking a week must not wait on the network, and a
+      // failed sync leaves the browser copy intact.
+      if (user) api.setCourseDates(startDate, targetEnd, updated).catch(() => {})
       if (isDone(updated, weekNumber)) {
         const next = nextUnfinished(updated, COURSE.length)
         setWorkingWeek(next)
         localStorage.setItem(WEEK_STORAGE_KEY, String(next))
       }
     },
-    [weeksDone],
+    [weeksDone, user, startDate, targetEnd],
   )
 
   const goToWeek = useCallback((next: number) => {
