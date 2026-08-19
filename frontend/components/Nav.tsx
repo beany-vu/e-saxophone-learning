@@ -12,6 +12,7 @@ const LINKS: { href: string; key: StringKey }[] = [
   { href: '/learn', key: 'nav.learn' },
   { href: '/exercises', key: 'nav.exercises' },
   { href: '/progress', key: 'nav.progress' },
+  { href: '/api-docs', key: 'nav.api' },
 ]
 
 export default function Nav() {

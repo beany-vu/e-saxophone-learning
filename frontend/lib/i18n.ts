@@ -25,6 +25,7 @@ const en = {
   'nav.login': 'Log in',
   'nav.logout': 'Log out',
   'nav.language': 'Language',
+  'nav.api': 'API',
 
   // Shared words
   'common.start': 'Start',
@@ -286,6 +287,7 @@ const fr: Record<StringKey, string> = {
   'nav.login': 'Se connecter',
   'nav.logout': 'Se deconnecter',
   'nav.language': 'Langue',
+  'nav.api': 'API',
 
   'common.start': 'Commencer',
   'common.restart': 'Recommencer',

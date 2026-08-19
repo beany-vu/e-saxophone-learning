@@ -15,22 +15,42 @@ type server struct {
 	corsOrigin string
 }
 
-// routes wires every URL to its handler. Go 1.22+ lets us put the HTTP method
-// directly in the pattern ("POST /api/auth/login").
+// route is one endpoint. Keeping them as data rather than as a run of
+// mux.HandleFunc calls means a test can compare the real routing table with
+// the OpenAPI document, so the documentation cannot quietly go stale.
+type route struct {
+	Method  string
+	Path    string
+	Auth    bool
+	handler http.HandlerFunc
+}
+
+// Routes is the whole API. Go 1.22+ lets the method go in the pattern.
+func (s *server) Routes() []route {
+	return []route{
+		{"GET", "/health", false, s.handleHealth},
+		{"GET", "/api/openapi.json", false, s.handleOpenAPI},
+
+		{"POST", "/api/auth/signup", false, s.handleSignup},
+		{"POST", "/api/auth/login", false, s.handleLogin},
+		{"POST", "/api/auth/logout", false, s.handleLogout},
+		{"GET", "/api/auth/me", true, s.handleMe},
+
+		{"POST", "/api/practice/sessions", true, s.handleCreateSession},
+		{"GET", "/api/practice/summary", true, s.handleSummary},
+		{"PUT", "/api/practice/course", true, s.handleSetCourse},
+	}
+}
+
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /health", s.handleHealth)
-
-	mux.HandleFunc("POST /api/auth/signup", s.handleSignup)
-	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
-	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
-	mux.HandleFunc("GET /api/auth/me", s.requireAuth(s.handleMe))
-
-	mux.HandleFunc("POST /api/practice/sessions", s.requireAuth(s.handleCreateSession))
-	mux.HandleFunc("GET /api/practice/summary", s.requireAuth(s.handleSummary))
-	mux.HandleFunc("PUT /api/practice/course", s.requireAuth(s.handleSetCourse))
-
+	for _, r := range s.Routes() {
+		handler := r.handler
+		if r.Auth {
+			handler = s.requireAuth(handler)
+		}
+		mux.HandleFunc(r.Method+" "+r.Path, handler)
+	}
 	return s.withMiddleware(mux)
 }
 

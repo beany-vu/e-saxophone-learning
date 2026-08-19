@@ -203,6 +203,8 @@ backend/                Go API, one flat "package main"
   handlers_auth.go      signup, login, logout, me
   handlers_practice.go  save a session, read the summary
   schema.sql            users, practice_sessions, note_stats
+  openapi.json          the API description, embedded and served
+  openapi.go            serves it, and openapi_test.go stops it drifting
   *_test.go             tests live next to the code they cover
 
 frontend/               Next.js 15, App Router, TypeScript
@@ -260,6 +262,15 @@ the cookie is genuine.
 | GET | `/api/auth/me` | yes | current user |
 | POST | `/api/practice/sessions` | yes | save one practice session |
 | GET | `/api/practice/summary` | yes | totals, per-note counts, recent sessions, per-item stats |
+| PUT | `/api/practice/course` | yes | this learner's course start and target finish |
+| GET | `/api/openapi.json` | no | the API described in OpenAPI 3.1 |
+
+**Documentation**: <http://localhost:3000/api-docs> renders the spec, and
+`/api/openapi.json` is the machine-readable version for Postman, Insomnia, code
+generators or anything else that speaks OpenAPI. The document is hand written and
+embedded in the Go binary, and a test compares it with the routing table **in both
+directions**, so an endpoint cannot be added, removed or made public without the
+documentation following.
 
 Example:
 
