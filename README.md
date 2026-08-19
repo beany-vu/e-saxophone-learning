@@ -427,10 +427,16 @@ own systemd service. Grab a registration token from
 ### Deploying
 
 Every push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml),
-or trigger it by hand from the Actions tab. It runs the tests on GitHub's
-runners first, then on the self-hosted runner it builds the new images while the
-old containers keep serving, swaps them, and waits for both to answer before
-declaring success.
+or trigger it by hand from the Actions tab. It runs the tests first, in
+throwaway containers against a throwaway database, so a red test stops the
+deploy before anything production-facing is touched. Then it builds the new
+images while the old containers keep serving, swaps them, and waits for both to
+answer before declaring success.
+
+Everything runs on the self-hosted runner. **Do not add a `runs-on:
+ubuntu-latest` job**: GitHub-hosted runners are unavailable on this account, so
+such a job fails in seconds with *"your account is locked due to a billing
+issue"*, and anything with `needs:` pointing at it is skipped rather than run.
 
 By hand on the box:
 
