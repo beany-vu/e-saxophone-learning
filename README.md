@@ -145,6 +145,12 @@ mode the app ignores its own playback rather than scoring it.
 **One line at a time.** Every item is split into phrases, and any phrase can be
 selected and drilled on its own, listened to on its own, and scored on its own.
 
+**Compose** at `/compose`: click notes on the keyboard to write a tune. Pick a
+time signature (2/4, 3/4, 4/4) and a note length, tick the dot to add half
+again, and the bars work themselves out. Bar lines appear on the staff, each
+note is heard as you place it, and a bar holding more than it should is
+flagged rather than silently rearranged. Save it and it joins your melodies.
+
 **Your own melodies.** Type a tune as note names, **one line per phrase**, with an
 optional label:
 
@@ -262,6 +268,7 @@ frontend/               Next.js 15, App Router, TypeScript
   lib/tone.ts           melody timing, tested without any audio
   lib/staff.ts          where a note sits on the treble staff
   lib/course.ts         the dated 20 week plan
+  lib/compose.ts        note lengths, bars and time signatures
   lib/i18n.ts           the language list and lookup
   lib/i18n.<lang>.ts    one dictionary per language, 255 keys each
   lib/i18n-context.tsx  language and note naming, remembered in the browser

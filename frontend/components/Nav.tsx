@@ -11,6 +11,7 @@ const LINKS: { href: string; key: StringKey }[] = [
   { href: '/monitor', key: 'nav.monitor' },
   { href: '/learn', key: 'nav.learn' },
   { href: '/exercises', key: 'nav.exercises' },
+  { href: '/compose', key: 'nav.compose' },
   { href: '/progress', key: 'nav.progress' },
   { href: '/api-docs', key: 'nav.api' },
   { href: '/settings', key: 'nav.settings' },

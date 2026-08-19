@@ -21,11 +21,14 @@ export default function Staff({
   notes,
   current,
   lyrics,
+  barlines,
 }: {
   notes: number[]
   /** Index of the note to highlight, if any. */
   current?: number | null
   lyrics?: string[]
+  /** Indices a bar line falls before, so a composition reads in bars. */
+  barlines?: number[]
 }) {
   const width = LEFT_PAD + Math.max(1, notes.length) * NOTE_SPACING + 16
   const height = BASELINE + 46
@@ -64,6 +67,18 @@ export default function Staff({
       >
         G
       </text>
+
+      {(barlines || []).map((index) => (
+        <line
+          key={`bar-${index}`}
+          x1={LEFT_PAD + index * NOTE_SPACING + 2}
+          x2={LEFT_PAD + index * NOTE_SPACING + 2}
+          y1={yFor(STAFF_TOP)}
+          y2={yFor(0)}
+          stroke="var(--muted)"
+          strokeWidth="1.5"
+        />
+      ))}
 
       {notes.map((midi, i) => {
         const note = staffNote(midi)

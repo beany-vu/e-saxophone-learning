@@ -9,6 +9,8 @@ type Props = {
   low?: number
   high?: number
   showLabels?: boolean
+  /** When given, the keys become clickable and this fires with the note. */
+  onPress?: (midi: number) => void
 }
 
 export default function Piano({
@@ -17,6 +19,7 @@ export default function Piano({
   low = PIANO_LOW,
   high = PIANO_HIGH,
   showLabels = true,
+  onPress,
 }: Props) {
   const all: number[] = []
   for (let n = low; n <= high; n++) all.push(n)
@@ -32,6 +35,8 @@ export default function Piano({
             key={n}
             className={`white${activeSet.has(n) ? ' active' : ''}${target === n ? ' target' : ''}`}
             title={noteName(n)}
+            onClick={onPress ? () => onPress(n) : undefined}
+            style={onPress ? { cursor: 'pointer' } : undefined}
           >
             {showLabels && pitchClassName(n) === 'C' && <div className="kb">{noteName(n)}</div>}
           </div>
@@ -47,8 +52,12 @@ export default function Piano({
           <div
             key={black}
             className={`black${activeSet.has(black) ? ' active' : ''}${target === black ? ' target' : ''}`}
-            style={{ left: `${((i + 1) / whites.length) * 100}%` }}
+            style={{
+              left: `${((i + 1) / whites.length) * 100}%`,
+              ...(onPress ? { cursor: 'pointer' } : {}),
+            }}
             title={noteName(black)}
+            onClick={onPress ? () => onPress(black) : undefined}
           />
         )
       })}
