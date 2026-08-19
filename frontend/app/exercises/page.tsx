@@ -7,11 +7,11 @@ import { useInputContext } from '@/lib/input-context'
 import { useI18n } from '@/lib/i18n-context'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
-import { buildScale, formatDuration, noteName, NOTE_NAMES, SCALES } from '@/lib/notes'
+import { buildScale, formatDuration, NOTE_NAMES, SCALES } from '@/lib/notes'
 
 export default function ExercisesPage() {
   const input = useInputContext()
-  const { t } = useI18n()
+  const { t, n } = useI18n()
   const { user } = useAuth()
 
   const [rootPc, setRootPc] = useState(0) // pitch class, 0 = C
@@ -176,15 +176,15 @@ export default function ExercisesPage() {
 
       <div className="panel">
         <h2>
-          {noteName(root)} {scaleName}
+          {n(root)} {scaleName}
         </h2>
         <div className="seq">
-          {sequence.map((n, i) => (
+          {sequence.map((midi, i) => (
             <div
               key={i}
               className={`step${i < index ? ' done' : ''}${running && i === index ? ' current' : ''}`}
             >
-              {noteName(n)}
+              {n(midi)}
             </div>
           ))}
         </div>

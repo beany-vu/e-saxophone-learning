@@ -11,6 +11,8 @@ import {
   VOICES,
   toConcert,
   yamahaName,
+  solfegeName,
+  nameNote,
 } from './notes'
 
 describe('noteName', () => {
@@ -186,5 +188,49 @@ describe('how black notes are spelled', () => {
 
   it('still reads both spellings when a melody is typed in', () => {
     expect(parseMelody('Bb4 A#4 Eb5 D#5').notes).toEqual([70, 70, 75, 75])
+  })
+})
+
+describe('solfege names', () => {
+  it('names the natural notes the way solfege does', () => {
+    expect(solfegeName(60)).toBe('do4')
+    expect(solfegeName(62)).toBe('re4')
+    expect(solfegeName(64)).toBe('mi4')
+    expect(solfegeName(65)).toBe('fa4')
+    expect(solfegeName(67)).toBe('sol4')
+    expect(solfegeName(69)).toBe('la4')
+    expect(solfegeName(71)).toBe('si4')
+  })
+
+  it('keeps the same flats and sharps the instrument uses', () => {
+    expect(solfegeName(70)).toBe('sib4') // Bb, not la#
+    expect(solfegeName(63)).toBe('mib4') // Eb
+    expect(solfegeName(73)).toBe('do#5')
+    expect(solfegeName(66)).toBe('fa#4')
+  })
+
+  it('keeps the octave number, so the two namings line up', () => {
+    for (let midi = 55; midi <= 91; midi++) {
+      const octave = (name: string) => name.replace(/[^-\d]/g, '')
+      expect(octave(solfegeName(midi))).toBe(octave(noteName(midi)))
+    }
+  })
+
+  it('is the same note under a different name, never a different note', () => {
+    for (let midi = 55; midi <= 91; midi++) {
+      expect(new Set([solfegeName(midi)]).size).toBe(1)
+      expect(solfegeName(midi)).not.toBe(noteName(midi))
+    }
+  })
+})
+
+describe('nameNote', () => {
+  it('picks the naming asked for', () => {
+    expect(nameNote(67, 'letters')).toBe('G4')
+    expect(nameNote(67, 'solfege')).toBe('sol4')
+  })
+
+  it('defaults to letters, which is what the fingering chart uses', () => {
+    expect(nameNote(67)).toBe('G4')
   })
 })

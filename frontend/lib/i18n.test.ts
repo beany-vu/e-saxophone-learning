@@ -1,12 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { STRINGS, LANGUAGES, translate, type Lang } from '@/lib/i18n'
+import { STRINGS, LANGUAGES, translate, defaultNaming, type Lang } from '@/lib/i18n'
 
 const langs = LANGUAGES.map((l) => l.code)
 
 describe('the dictionaries', () => {
-  it('offers English and French', () => {
-    expect(langs).toContain('en')
-    expect(langs).toContain('fr')
+  it('offers the five languages', () => {
+    expect(langs).toEqual(['en', 'fr', 'vi', 'nl', 'es'])
+  })
+
+  it('labels each language in its own words', () => {
+    // Someone looking for their language is not reading the current one.
+    expect(LANGUAGES.find((l) => l.code === 'vi')?.label).toBe('Tiếng Việt')
+    expect(LANGUAGES.find((l) => l.code === 'nl')?.label).toBe('Nederlands')
+    expect(LANGUAGES.find((l) => l.code === 'es')?.label).toBe('Español')
+  })
+
+  it('starts each language on the note naming it actually uses', () => {
+    expect(defaultNaming('en')).toBe('letters')
+    expect(defaultNaming('nl')).toBe('letters')
+    expect(defaultNaming('fr')).toBe('solfege')
+    expect(defaultNaming('es')).toBe('solfege')
+    expect(defaultNaming('vi')).toBe('solfege')
   })
 
   it('has exactly the same keys in every language', () => {
@@ -25,9 +39,15 @@ describe('the dictionaries', () => {
   })
 
   it('actually translates rather than copying English across', () => {
-    const same = Object.keys(STRINGS.en).filter((k) => STRINGS.fr[k] === STRINGS.en[k])
-    // A few words are the same in both languages, but not most of them.
-    expect(same.length).toBeLessThan(Object.keys(STRINGS.en).length / 4)
+    langs
+      .filter((l) => l !== 'en')
+      .forEach((lang) => {
+        const same = Object.keys(STRINGS.en).filter((k) => STRINGS[lang][k] === STRINGS.en[k])
+        // A few words are the same in any two languages, but not most of them.
+        expect(same.length, `${lang} looks untranslated`).toBeLessThan(
+          Object.keys(STRINGS.en).length / 4,
+        )
+      })
   })
 })
 
@@ -35,6 +55,9 @@ describe('translate', () => {
   it('returns the string for the language asked for', () => {
     expect(translate('en', 'nav.learn')).toBe('Learn')
     expect(translate('fr', 'nav.learn')).toBe('Apprendre')
+    expect(translate('vi', 'nav.learn')).toBe('Học')
+    expect(translate('nl', 'nav.learn')).toBe('Leren')
+    expect(translate('es', 'nav.learn')).toBe('Aprender')
   })
 
   it('falls back to English rather than showing a blank', () => {

@@ -29,7 +29,7 @@ import {
   noteForKeys,
   type SaxKeyId,
 } from '@/lib/fingerings'
-import { formatDuration, noteName, toConcert, yamahaName } from '@/lib/notes'
+import { formatDuration, toConcert, yamahaName } from '@/lib/notes'
 import { describeOffset } from '@/lib/calibration'
 import { useI18n } from '@/lib/i18n-context'
 import type { Lang, StringKey } from '@/lib/i18n'
@@ -42,16 +42,8 @@ import {
   weekDates,
   weekFor,
   weekStatus,
-  finishDate,
-  pace,
 } from '@/lib/course'
-import {
-  START_KEY,
-  TARGET_KEY,
-  isValidDate,
-  resolveDates,
-  today,
-} from '@/lib/course-dates'
+import { START_KEY, TARGET_KEY, resolveDates } from '@/lib/course-dates'
 import {
   completion,
   isDone,
@@ -69,7 +61,7 @@ type CustomMelody = { id: string; title: string; notes: number[]; phrases?: Phra
 
 export default function LearnPage() {
   const input = useInputContext()
-  const { lang, t } = useI18n()
+  const { lang, t, n } = useI18n()
   const player = useMelodyPlayer()
   const { user } = useAuth()
   const [tempo, setTempo] = useState(90)
@@ -86,7 +78,7 @@ export default function LearnPage() {
   // which marched every account through the same calendar.
   const [startDate, setStartDate] = useState(COURSE_DEFAULT_START)
   const [targetEnd, setTargetEnd] = useState('')
-  const [datesMsg, setDatesMsg] = useState<string | null>(null)
+
 
   // Dates resolve from the account first, then this browser, then the default.
   useEffect(() => {
@@ -111,25 +103,7 @@ export default function LearnPage() {
     else setWorkingWeek(onCalendar ?? 1)
   }, [startDate])
 
-  async function saveDates(nextStart: string, nextTarget: string) {
-    if (!isValidDate(nextStart)) return setDatesMsg(t('course.badDate'))
-    if (nextTarget && !isValidDate(nextTarget)) return setDatesMsg(t('course.badDate'))
-    if (nextTarget && nextTarget <= nextStart) return setDatesMsg(t('course.targetBeforeStart'))
 
-    setStartDate(nextStart)
-    setTargetEnd(nextTarget)
-    localStorage.setItem(START_KEY, nextStart)
-    localStorage.setItem(TARGET_KEY, nextTarget)
-    setWorkingWeek(weekFor(new Date(), nextStart)?.week ?? 1)
-
-    if (!user) return setDatesMsg(t('course.datesLocal'))
-    try {
-      await api.setCourseDates(nextStart, nextTarget, weeksDone)
-      setDatesMsg(t('course.datesAccount'))
-    } catch (err) {
-      setDatesMsg(err instanceof Error ? err.message : 'save failed')
-    }
-  }
 
   /** Ticking a week moves you on to the next one still outstanding. */
   const toggleWeekDone = useCallback(
@@ -230,8 +204,8 @@ export default function LearnPage() {
       return setDraftError(
         t('learn.couldNotRead', {
           tokens: draftParsed.errors.join(', '),
-          low: noteName(FINGERING_LOW),
-          high: noteName(FINGERING_HIGH),
+          low: n(FINGERING_LOW),
+          high: n(FINGERING_HIGH),
         }),
       )
     }
@@ -330,10 +304,10 @@ export default function LearnPage() {
     setHint(
       note % 12 === target % 12
         ? tRef.current('learn.rightNoteWrongOctave', {
-            played: noteName(note),
-            target: noteName(target),
+            played: n(note),
+            target: n(target),
           })
-        : tRef.current('learn.wrongNote', { played: noteName(note), target: noteName(target) }),
+        : tRef.current('learn.wrongNote', { played: n(note), target: n(target) }),
     )
   }, [])
 
@@ -499,6 +473,9 @@ export default function LearnPage() {
                 {t('course.outsideDates')}
               </span>
             )}
+            <Link href="/settings" className="muted" style={{ fontSize: 13 }}>
+              {t('course.dates')}
+            </Link>
           </div>
 
           <div className="meter" style={{ margin: '0 0 12px' }}>
@@ -531,60 +508,7 @@ export default function LearnPage() {
               })}
             </div>
           )}
-          <details style={{ marginTop: 12 }}>
-            <summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>
-              {t('course.dates')}
-            </summary>
-            <div className="row" style={{ marginTop: 10, alignItems: 'flex-end', gap: 12 }}>
-              <div style={{ minWidth: 170 }}>
-                <label htmlFor="course-start" className="label">
-                  {t('course.startDate')}
-                </label>
-                <input
-                  id="course-start"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => saveDates(e.target.value, targetEnd)}
-                />
-              </div>
-              <div style={{ minWidth: 170 }}>
-                <label htmlFor="course-target" className="label">
-                  {t('course.targetDate')}
-                </label>
-                <input
-                  id="course-target"
-                  type="date"
-                  value={targetEnd}
-                  onChange={(e) => saveDates(startDate, e.target.value)}
-                />
-              </div>
-              <button className="ghost" onClick={() => saveDates(today(), targetEnd)}>
-                {t('course.startToday')}
-              </button>
-            </div>
-            <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>
-              {t('course.finishes', { date: finishDate(startDate) })}
-              {targetEnd && isValidDate(targetEnd) && (
-                <>
-                  {' '}
-                  {(() => {
-                    const p = pace(startDate, targetEnd)
-                    const rate = p.weeksPerWeek.toFixed(1)
-                    if (p.verdict === 'rushed') return t('course.paceRushed', { rate })
-                    if (p.verdict === 'relaxed') return t('course.paceRelaxed', { rate })
-                    return t('course.paceSteady')
-                  })()}
-                </>
-              )}
-            </p>
-            {datesMsg && (
-              <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>
-                {datesMsg}
-              </p>
-            )}
-          </details>
-
-          <details style={{ marginTop: 12 }}>
+                    <details style={{ marginTop: 12 }}>
             <summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>
               {t('course.wholePlan', { total: COURSE.length })}
             </summary>
@@ -645,11 +569,11 @@ export default function LearnPage() {
               style={{ marginBottom: 10 }}
             >
               {Array.from({ length: FINGERING_HIGH - FINGERING_LOW + 1 }, (_, i) => {
-                const n = FINGERING_LOW + i
+                const midi = FINGERING_LOW + i
                 return (
-                  <option key={n} value={n}>
-                    {noteName(n)} / Yamaha {yamahaName(n)} (sounds{' '}
-                    {noteName(toConcert(n, input.voice.semitones))})
+                  <option key={midi} value={midi}>
+                    {n(midi)} / Yamaha {yamahaName(midi)} (sounds{' '}
+                    {n(toConcert(midi, input.voice.semitones))})
                   </option>
                 )
               })}
@@ -696,12 +620,12 @@ export default function LearnPage() {
               <Fingering keys={pressed} onToggle={togglePressed} size={130} />
               <div>
                 <div style={{ fontSize: 30, fontWeight: 700 }}>
-                  {guess ? noteName(guess.written) : '?'}
+                  {guess ? n(guess.written) : '?'}
                 </div>
                 <div className="muted" style={{ fontSize: 13, maxWidth: 170 }}>
                   {guess ? (
                     <>
-                      sounds {noteName(toConcert(guess.written, input.voice.semitones))} concert
+                      sounds {n(toConcert(guess.written, input.voice.semitones))} concert
                       {guess.via ? ` (${guess.via} fingering)` : ''}
                     </>
                   ) : pressed.length === 0 ? (
@@ -721,8 +645,8 @@ export default function LearnPage() {
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
           {t('learn.coverage', {
-            low: noteName(FINGERING_LOW),
-            high: noteName(FINGERING_HIGH),
+            low: n(FINGERING_LOW),
+            high: n(FINGERING_HIGH),
           })}
         </p>
       </div>
@@ -754,10 +678,10 @@ export default function LearnPage() {
               </div>
               <div style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}>
                 {player.index !== null && segment
-                  ? noteName(segment.notes[player.index])
+                  ? n(segment.notes[player.index])
                   : target !== null
-                    ? noteName(target)
-                    : noteName(segment?.notes[0] ?? 60)}
+                    ? n(target)
+                    : n(segment?.notes[0] ?? 60)}
               </div>
               {segment?.lyrics && (
                 <div style={{ fontSize: 18, color: 'var(--accent)' }}>
@@ -766,7 +690,7 @@ export default function LearnPage() {
               )}
               <div className="muted" style={{ fontSize: 13 }}>
                 {t('learn.soundsConcert', {
-                  note: noteName(toConcert(target ?? segment?.notes[0] ?? 60, input.voice.semitones)),
+                  note: n(toConcert(target ?? segment?.notes[0] ?? 60, input.voice.semitones)),
                 })}
               </div>
               <div style={{ marginTop: 10 }}>
@@ -817,14 +741,14 @@ export default function LearnPage() {
               )}
 
               <div className="seq">
-                {segment!.notes.map((n, i) => (
+                {segment!.notes.map((midi, i) => (
                   <div
                     key={i}
                     className={`step${i < index && !player.playing ? ' done' : ''}${
                       (running && i === index) || player.index === i ? ' current' : ''
                     }`}
                   >
-                    <div>{noteName(n)}</div>
+                    <div>{n(midi)}</div>
                     {segment!.lyrics && (
                       <div style={{ fontSize: 11, opacity: 0.75 }}>{segment!.lyrics[i]}</div>
                     )}
@@ -861,7 +785,7 @@ export default function LearnPage() {
                   {t('learn.heard')}
                 </span>
                 <span style={{ fontSize: 18, fontWeight: 600 }}>
-                  {lastHeard === null ? t('learn.nothingYet') : noteName(lastHeard)}
+                  {lastHeard === null ? t('learn.nothingYet') : n(lastHeard)}
                 </span>
                 {input.offset !== 0 && (
                   <span className="badge">
@@ -877,8 +801,8 @@ export default function LearnPage() {
                 >
                   <p style={{ margin: '0 0 8px', fontSize: 14 }}>
                     {t('learn.notPassing', {
-                      heard: noteName(lastHeard),
-                      target: noteName(target),
+                      heard: n(lastHeard),
+                      target: n(target),
                     })}
                   </p>
                   <div className="row">
@@ -986,6 +910,7 @@ export default function LearnPage() {
         }
         lang={lang}
         t={t}
+        n={n}
       />
       <ItemList
         title={t('learn.songs')}
@@ -997,6 +922,7 @@ export default function LearnPage() {
         }
         lang={lang}
         t={t}
+        n={n}
       />
 
       <div className="panel">
@@ -1041,7 +967,7 @@ export default function LearnPage() {
               >
                 {Array.from({ length: 12 }, (_, i) => 72 + i).map((midi) => (
                   <option key={midi} value={midi}>
-                    {noteName(midi)}
+                    {n(midi)}
                   </option>
                 ))}
               </select>
@@ -1061,8 +987,8 @@ export default function LearnPage() {
               <div key={c.id} className="panel" style={{ margin: 0, padding: 12, minWidth: 240 }}>
                 <strong>{c.title}</strong>
                 <div className="muted" style={{ fontSize: 12, margin: '4px 0 8px' }}>
-                  {c.notes.length} notes, {noteName(itemRange(c).low)} to{' '}
-                  {noteName(itemRange(c).high)}
+                  {c.notes.length} notes, {n(itemRange(c).low)} to{' '}
+                  {n(itemRange(c).high)}
                   {stats[c.id] ? ` · best ${stats[c.id].bestAccuracy}%` : ''}
                 </div>
                 <div className="row">
@@ -1177,6 +1103,7 @@ function ItemList({
   onListen,
   lang,
   t,
+  n,
 }: {
   title: string
   items: PracticeItem[]
@@ -1185,6 +1112,7 @@ function ItemList({
   onListen: (item: PracticeItem) => void
   lang: Lang
   t: (key: StringKey, values?: Record<string, string | number>) => string
+  n: (midi: number) => string
 }) {
   return (
     <div className="panel">
@@ -1213,8 +1141,8 @@ function ItemList({
               <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
                 {t('learn.notesFromTo', {
                   count: item.notes.length,
-                  low: noteName(range.low),
-                  high: noteName(range.high),
+                  low: n(range.low),
+                  high: n(range.high),
                 })}
                 {stat
                   ? ` · ${t('learn.playedTimes', {

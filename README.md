@@ -9,7 +9,8 @@ Two ways in, switchable on the monitor page:
 - **Microphone**, the no-cable one. The computer listens to the instrument's
   speaker and works out the pitch from the sound
 
-- **English and French**, switchable in the header, remembered between visits
+- **Five languages**: English, French, Vietnamese, Dutch, Spanish
+- **Note names your way**: C D E, or do re mi, switchable and applied everywhere
 - **Monitor** live keyboard, breath and velocity meters, raw event log
 - **Learn** fingering chart in both directions, warm-ups, songs, your own melodies
 - **Exercises** scale trainer that highlights the next note and scores accuracy
@@ -180,6 +181,10 @@ because the plan tells you to repeat a week when one goes badly.
 highlighted as you play or as the demo runs, and the words under the notes. Notation
 is the point of the exercise, so it is on by default.
 
+**Settings** at `/settings`: language, whether notes read as C D E or do re mi,
+and your course dates. Preferences live there so the other pages stay about
+playing.
+
 **Octave naming.** The chart labels every note both ways, `C4 / Yamaha C3`. MIDI and
 scientific pitch notation call middle C `C4`; Yamaha instruments and most YDS tutorials
 call it `C3`. Same note, labels an octave apart.
@@ -257,8 +262,9 @@ frontend/               Next.js 15, App Router, TypeScript
   lib/tone.ts           melody timing, tested without any audio
   lib/staff.ts          where a note sits on the treble staff
   lib/course.ts         the dated 20 week plan
-  lib/i18n.ts           every interface string, in English and French
-  lib/i18n-context.tsx  the language switch, remembered in the browser
+  lib/i18n.ts           the language list and lookup
+  lib/i18n.<lang>.ts    one dictionary per language, 255 keys each
+  lib/i18n-context.tsx  language and note naming, remembered in the browser
   lib/curriculum-i18n.ts French for the exercises and songs
   lib/course-i18n.ts    French for the course
   hooks/useMelodyPlayer.ts  plays a melody through the speakers

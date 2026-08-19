@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { api, ApiError, type Summary } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
-import { formatDuration, noteName, PIANO_HIGH, PIANO_LOW } from '@/lib/notes'
+import { formatDuration, PIANO_HIGH, PIANO_LOW } from '@/lib/notes'
 import { itemById } from '@/lib/curriculum'
 import { useI18n } from '@/lib/i18n-context'
 import { localiseItem } from '@/lib/curriculum-i18n'
 
 export default function ProgressPage() {
   const { user, loading: authLoading } = useAuth()
-  const { lang, t } = useI18n()
+  const { lang, t, n } = useI18n()
   const [summary, setSummary] = useState<Summary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -90,14 +90,14 @@ export default function ProgressPage() {
               <div
                 key={c.note}
                 className="cell"
-                title={`${noteName(c.note)}: ${c.count}`}
+                title={`${n(c.note)}: ${c.count}`}
                 style={{
                   background:
                     c.count === 0 ? 'var(--panel-2)' : `rgba(255, 180, 84, ${0.15 + ratio * 0.85})`,
                   color: ratio > 0.45 ? '#1a1205' : 'var(--muted)',
                 }}
               >
-                {noteName(c.note)}
+                {n(c.note)}
               </div>
             )
           })}

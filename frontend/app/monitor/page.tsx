@@ -6,13 +6,13 @@ import Piano from '@/components/Piano'
 import { useInputContext } from '@/lib/input-context'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
-import { formatDuration, noteName, toConcert, VOICES } from '@/lib/notes'
+import { formatDuration, toConcert, VOICES } from '@/lib/notes'
 import { describeOffset } from '@/lib/calibration'
 import { useI18n } from '@/lib/i18n-context'
 
 export default function MonitorPage() {
   const input = useInputContext()
-  const { t } = useI18n()
+  const { t, n } = useI18n()
   const { user } = useAuth()
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState(0)
@@ -182,7 +182,7 @@ export default function MonitorPage() {
             <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
               {t('monitor.currently', { amount: describeOffset(input.offset) })}
               {input.lastNote !== null &&
-                t('monitor.lastNoteRead', { note: noteName(input.lastNote) })}
+                t('monitor.lastNoteRead', { note: n(input.lastNote) })}
             </div>
           </div>
 
@@ -248,13 +248,13 @@ export default function MonitorPage() {
           <div style={{ minWidth: 170 }}>
             <div className="label">{t('monitor.playingNow')}</div>
             <div style={{ fontSize: 30, fontWeight: 700 }}>
-              {input.activeNotes.length ? input.activeNotes.map((n) => noteName(n)).join(' ') : '-'}
+              {input.activeNotes.length ? input.activeNotes.map((midi) => n(midi)).join(' ') : '-'}
             </div>
             <div className="muted" style={{ fontSize: 13 }}>
               {input.lastNote !== null
                 ? t('monitor.lastNote', {
-                    note: noteName(input.lastNote),
-                    concert: noteName(toConcert(input.lastNote, input.voice.semitones)),
+                    note: n(input.lastNote),
+                    concert: n(toConcert(input.lastNote, input.voice.semitones)),
                   })
                 : t('monitor.waitingForNote')}
             </div>
@@ -335,7 +335,7 @@ export default function MonitorPage() {
                   <td style={{ color: e.kind === 'on' ? 'var(--good)' : 'var(--muted)' }}>
                     {e.kind === 'on' ? t('monitor.noteOn') : t('monitor.noteOff')}
                   </td>
-                  <td>{noteName(e.note)}</td>
+                  <td>{n(e.note)}</td>
                   <td>{e.note}</td>
                   <td>{e.velocity}</td>
                 </tr>

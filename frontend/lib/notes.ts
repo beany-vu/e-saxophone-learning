@@ -28,6 +28,35 @@ export function yamahaName(midi: number): string {
   return DISPLAY_NAMES[midi % 12] + (Math.floor(midi / 12) - 2)
 }
 
+// The other way of naming notes, used across France, Spain, Italy, Vietnam and
+// much of the world: do re mi rather than C D E. Same notes, same octave
+// numbers, and the same flats the instrument prints on its own keys.
+const SOLFEGE_NAMES = [
+  'do',
+  'do#',
+  're',
+  'mib',
+  'mi',
+  'fa',
+  'fa#',
+  'sol',
+  'sol#',
+  'la',
+  'sib',
+  'si',
+]
+
+export function solfegeName(midi: number): string {
+  return SOLFEGE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1)
+}
+
+export type NoteNaming = 'letters' | 'solfege'
+
+/** A note in whichever naming the reader prefers. */
+export function nameNote(midi: number, naming: NoteNaming = 'letters'): string {
+  return naming === 'solfege' ? solfegeName(midi) : noteName(midi)
+}
+
 /** Name without the octave number, e.g. 61 -> "C#". */
 export function pitchClassName(midi: number): string {
   return DISPLAY_NAMES[midi % 12]

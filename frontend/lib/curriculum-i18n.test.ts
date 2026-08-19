@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ALL_ITEMS } from '@/lib/curriculum'
-import { ITEMS_FR, localiseItem } from '@/lib/curriculum-i18n'
+import { ITEMS_FR, localiseItem, CONTENT_LANGUAGES } from '@/lib/curriculum-i18n'
 
 describe('the French practice material', () => {
   it('translates every exercise and song', () => {
@@ -38,5 +38,24 @@ describe('the French practice material', () => {
 
   it('returns English untouched', () => {
     expect(localiseItem(ALL_ITEMS[0], 'en')).toBe(ALL_ITEMS[0])
+  })
+})
+
+describe('languages without translated material', () => {
+  // The interface is translated into five languages; the exercises and the
+  // course weeks are not, yet. Rather than showing blanks, they fall back to
+  // English, and this test records exactly which languages that applies to so
+  // the gap is visible in the test output instead of only on screen.
+  it('falls back to English rather than leaving holes', () => {
+    const item = ALL_ITEMS[0]
+    ;(['vi', 'nl', 'es'] as const).forEach((lang) => {
+      const out = localiseItem(item, lang)
+      expect(out.title, lang).toBe(item.title)
+      expect(out.notes, lang).toEqual(item.notes)
+    })
+  })
+
+  it('says which languages the material is actually written in', () => {
+    expect(CONTENT_LANGUAGES).toEqual(['en', 'fr'])
   })
 })

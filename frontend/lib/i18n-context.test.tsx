@@ -66,3 +66,78 @@ describe('the language switch', () => {
     expect(screen.getByTestId('lang').textContent).toBe('en')
   })
 })
+
+function NoteProbe() {
+  const { naming, setNaming, setLang, n } = useI18n()
+  return (
+    <div>
+      <span data-testid="naming">{naming}</span>
+      <span data-testid="note">{n(67)}</span>
+      <button onClick={() => setNaming('solfege')}>solfege</button>
+      <button onClick={() => setLang('fr')}>to-fr</button>
+      <button onClick={() => setLang('nl')}>to-nl</button>
+    </div>
+  )
+}
+
+describe('note naming', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('names notes with letters in English', () => {
+    render(
+      <I18nProvider>
+        <NoteProbe />
+      </I18nProvider>,
+    )
+    expect(screen.getByTestId('note').textContent).toBe('G4')
+  })
+
+  it('switches to do re mi when asked', () => {
+    render(
+      <I18nProvider>
+        <NoteProbe />
+      </I18nProvider>,
+    )
+    act(() => screen.getByText('solfege').click())
+    expect(screen.getByTestId('note').textContent).toBe('sol4')
+  })
+
+  it('follows the language until the reader chooses for themselves', () => {
+    const first = render(
+      <I18nProvider>
+        <NoteProbe />
+      </I18nProvider>,
+    )
+    act(() => screen.getByText('to-fr').click())
+    expect(screen.getByTestId('note').textContent).toBe('sol4')
+    act(() => screen.getByText('to-nl').click())
+    expect(screen.getByTestId('note').textContent).toBe('G4')
+    first.unmount()
+
+    // Once chosen, the choice sticks across a language change.
+    render(
+      <I18nProvider>
+        <NoteProbe />
+      </I18nProvider>,
+    )
+    act(() => screen.getByText('solfege').click())
+    act(() => screen.getByText('to-nl').click())
+    expect(screen.getByTestId('note').textContent).toBe('sol4')
+  })
+
+  it('remembers the naming for next time', () => {
+    const first = render(
+      <I18nProvider>
+        <NoteProbe />
+      </I18nProvider>,
+    )
+    act(() => screen.getByText('solfege').click())
+    first.unmount()
+    render(
+      <I18nProvider>
+        <NoteProbe />
+      </I18nProvider>,
+    )
+    expect(screen.getByTestId('naming').textContent).toBe('solfege')
+  })
+})

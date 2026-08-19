@@ -180,10 +180,18 @@ export const ITEMS_FR: Record<string, ItemText> = {
   },
 }
 
+// One table per language. English is the data itself, in lib/curriculum.ts.
+// A language absent from here falls back to English rather than showing gaps,
+// and CONTENT_LANGUAGES says which are actually covered, so the fallback is
+// visible rather than quietly pretending.
+const BY_LANG: Partial<Record<Lang, Record<string, ItemText>>> = { fr: ITEMS_FR }
+
+export const CONTENT_LANGUAGES: Lang[] = ['en', ...(Object.keys(BY_LANG) as Lang[])]
+
 /** An item in the requested language, phrases included. */
 export function localiseItem(item: PracticeItem, lang: Lang): PracticeItem {
   if (lang === 'en') return item
-  const fr = ITEMS_FR[item.id]
+  const fr = BY_LANG[lang]?.[item.id]
   if (!fr) return item
   return {
     ...item,

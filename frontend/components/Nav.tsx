@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n-context'
 import { LANGUAGES } from '@/lib/i18n'
-import type { StringKey } from '@/lib/i18n'
+import type { Lang, StringKey } from '@/lib/i18n'
 
 const LINKS: { href: string; key: StringKey }[] = [
   { href: '/monitor', key: 'nav.monitor' },
@@ -13,6 +13,7 @@ const LINKS: { href: string; key: StringKey }[] = [
   { href: '/exercises', key: 'nav.exercises' },
   { href: '/progress', key: 'nav.progress' },
   { href: '/api-docs', key: 'nav.api' },
+  { href: '/settings', key: 'nav.settings' },
 ]
 
 export default function Nav() {
@@ -37,7 +38,7 @@ export default function Nav() {
         <select
           aria-label={t('nav.language')}
           value={lang}
-          onChange={(e) => setLang(e.target.value as typeof lang)}
+          onChange={(e) => setLang(e.target.value as Lang)}
           style={{ width: 'auto', padding: '4px 8px', marginRight: 8 }}
         >
           {LANGUAGES.map((l) => (

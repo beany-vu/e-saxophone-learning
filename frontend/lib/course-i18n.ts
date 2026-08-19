@@ -167,16 +167,23 @@ export const PHASES_FR: Record<string, { title: string; about: string }> = {
   },
 }
 
+// One table per language, as in lib/curriculum-i18n.ts. Anything missing
+// falls back to English.
+const WEEKS_BY_LANG: Partial<Record<Lang, Record<number, WeekText>>> = { fr: COURSE_FR }
+const PHASES_BY_LANG: Partial<Record<Lang, Record<string, { title: string; about: string }>>> = {
+  fr: PHASES_FR,
+}
+
 /** A week in the requested language. English is the data itself. */
 export function localiseWeek(week: CourseWeek, lang: Lang): CourseWeek {
   if (lang === 'en') return week
-  const fr = COURSE_FR[week.week]
+  const fr = WEEKS_BY_LANG[lang]?.[week.week]
   if (!fr) return week
   return { ...week, title: fr.title, focus: fr.focus, goal: fr.goal, watch: fr.watch }
 }
 
 export function localisePhase(phase: CoursePhase, lang: Lang): CoursePhase {
   if (lang === 'en') return phase
-  const fr = PHASES_FR[phase.id]
+  const fr = PHASES_BY_LANG[lang]?.[phase.id]
   return fr ? { ...phase, title: fr.title, about: fr.about } : phase
 }
