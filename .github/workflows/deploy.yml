@@ -56,7 +56,7 @@ jobs:
           echo "Docker is not responding after 60s. Is Docker Desktop running with WSL integration on?" >&2
           exit 1
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The whole history and every tag, so the release notes can say what
           # changed since the last deploy rather than repeating one commit.
