@@ -75,6 +75,20 @@ services:
     profiles: ["test"]
     command: ["go", "test", "./...", "-count=1"]
 
+  # Frontend test runner. Same image as `web`, so it uses the node_modules
+  # baked into it rather than whatever the host happens to have installed.
+  # Not started by `up` (it sits behind the "test" profile).
+  #   docker compose run --rm web-test
+  web-test:
+    build: ./frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    profiles: ["test"]
+    command: ["npm", "test"]
+
   # The MCP server, so an AI assistant can read how practice is going.
   # Not started by `up`: an assistant launches it and talks to it over stdio,
   # one process per conversation.
