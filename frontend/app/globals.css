@@ -133,6 +133,7 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
   border-top: 1px solid var(--line); color: var(--muted); font-size: 13px;
 }
 .site-footer a { color: var(--accent-2); }
+.site-footer p { margin: 4px 0; }
 
 /* piano */
 .piano { position: relative; height: 150px; user-select: none; margin: 6px 0 4px; }

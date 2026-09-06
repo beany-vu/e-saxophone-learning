@@ -331,6 +331,11 @@ export const vi: Record<StringKey, string> = {
   // ---- Chân trang ----
   'footer.openSource': 'Miễn phí và mã nguồn mở, theo giấy phép MIT.',
   'footer.contribute': 'Mã nguồn, báo lỗi và đóng góp trên GitHub',
+  'footer.star': 'Nếu bạn thấy vui, một ngôi sao trên GitHub sẽ giúp nuôi mèo. Cũng rất hoan nghênh pull request; mèo sẽ đích thân xem xét từng cái.',
+  'footer.more': 'Từ cùng một xưởng',
+  'footer.moreChat': 'michi-chat, nền tảng trợ lý chat cho doanh nghiệp nhỏ',
+  'footer.moreVz': '@michi-vz, thư viện biểu đồ cho mọi framework',
+  'footer.moreMaker': 'trang của tác giả',
 
   // ---- Chỗ yếu ----
   'learn.weakSpots': 'Chỗ yếu',

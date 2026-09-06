@@ -343,6 +343,11 @@ export const en = {
   // ---- Footer ----
   'footer.openSource': 'Free and open source, under the MIT licence.',
   'footer.contribute': 'Code, issues and contributions on GitHub',
+  'footer.star': 'If it made you smile, a star on GitHub keeps the cat fed. Pull requests are welcome too; the cat reviews every one personally.',
+  'footer.more': 'More from the same workshop',
+  'footer.moreChat': 'michi-chat, a chat assistant platform for small businesses',
+  'footer.moreVz': '@michi-vz, a chart library for any framework',
+  'footer.moreMaker': 'the maker\'s site',
 
   // ---- Weak spots ----
   'learn.weakSpots': 'Weak spots',

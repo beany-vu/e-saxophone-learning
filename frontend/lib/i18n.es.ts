@@ -331,6 +331,11 @@ export const es: Record<StringKey, string> = {
   // ---- Pie de página ----
   'footer.openSource': 'Libre y de código abierto, con licencia MIT.',
   'footer.contribute': 'Código, incidencias y contribuciones en GitHub',
+  'footer.star': 'Si te ha sacado una sonrisa, una estrella en GitHub mantiene al gato alimentado. Los pull requests también son bienvenidos; el gato revisa cada uno en persona.',
+  'footer.more': 'Del mismo taller',
+  'footer.moreChat': 'michi-chat, un asistente de chat para pequeños negocios',
+  'footer.moreVz': '@michi-vz, una librería de gráficos para cualquier framework',
+  'footer.moreMaker': 'el sitio del autor',
 
   // ---- Puntos débiles ----
   'learn.weakSpots': 'Puntos débiles',

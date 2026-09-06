@@ -331,6 +331,11 @@ export const nl: Record<StringKey, string> = {
   // ---- Voettekst ----
   'footer.openSource': 'Gratis en open source, onder de MIT-licentie.',
   'footer.contribute': 'Code, meldingen en bijdragen op GitHub',
+  'footer.star': 'Als dit u een glimlach gaf, houdt een ster op GitHub de kat gevoed. Pull requests zijn ook welkom; de kat beoordeelt elke persoonlijk.',
+  'footer.more': 'Meer uit dezelfde werkplaats',
+  'footer.moreChat': 'michi-chat, een chatassistent voor kleine bedrijven',
+  'footer.moreVz': '@michi-vz, een grafiekenbibliotheek voor elk framework',
+  'footer.moreMaker': 'de site van de maker',
 
   // ---- Zwakke plekken ----
   'learn.weakSpots': 'Zwakke plekken',
